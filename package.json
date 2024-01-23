@@ -9,6 +9,10 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/qrcode-terminal": "^0.12.2",
     "typescript": "^5.3.3"
+  },
+  "dependencies": {
+    "qrcode-terminal": "^0.12.0"
   }
 }
