@@ -39,6 +39,14 @@ export class ClientsManager {
         //await this.clients[clientId].initialize();
     }
 
+    public async getClientIds(clients: ClientController[]) {
+        let clientIds: string[] = [];
+        for (let client of clients) {
+            clientIds.push(client.getClientId());
+        }
+        return clientIds;
+    }
+
     private async pair(clientId: string) {
         let client = this.clients[clientId]; 
         await client.connect();
