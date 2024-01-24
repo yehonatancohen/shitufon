@@ -25,16 +25,43 @@ export class Group {
         this.createdAt = undefined;
     }
 
+    public async wasParticipantInGroup(participantId: string) {
+        // Checking if the participant was in the group before
+        await this.updateCurrentParticipants();
+        if (this.groupObj) {
+            let groupObj = this.groupObj as GroupChat;
+            let groupParticipants = await groupObj.participants;
+            let participantIds = groupParticipants.map(participant => participant.id._serialized);
+            return participantIds.includes(participantId);
+        }
+        return false;
+    }
+    
+    public async getParticipants() {
+        let res;
+        if (this.groupObj) {
+            res = this.totalParticipants;
+        }
+        return res;
+    }
+
+    public getClients() {
+        return this.clients;
+    }
+
     private async updateCurrentParticipants() {
+        // Update the current participants list and total participants according to the group
         if (this.groupObj) {
             let groupObj = this.groupObj as GroupChat;
             let groupParticipants = await groupObj.participants;
             let participantIds = groupParticipants.map(participant => participant.id._serialized);
             this.currentParticipants = await this.initParticipants(participantIds);
+            this.addParticipantList(this.currentParticipants);
         }
     }
 
     private addParticipantList(totalParticipants: Participant[]) {
+        // Add the new participants to the total participants list
         let added = false;
         for (const participant of totalParticipants) {
             if (!this.totalParticipants.includes(participant)) {
@@ -66,6 +93,7 @@ export class Group {
     }
 
     private async initParticipants(participantIds: string[]) {
+        // Create a participant object for each new participant id
         let res = [];
         for (const participant of participantIds) {
             res.push(await this.createParticipant(participant));
@@ -74,6 +102,7 @@ export class Group {
     }
 
     private async createParticipant(participantId: string) {
+        // Create a participant object for each new participant id
         let participantObj = this.getParticipantById(participantId);
         if (participantObj) {
             return participantObj;
@@ -116,6 +145,7 @@ export class Group {
     }
 
     private addAdmins(admins: ClientController[]) {
+        // Adds clients to the group as admins
         if(typeof this.groupObj == "string") {
             return;
         }
@@ -148,13 +178,5 @@ export class Group {
         //this.clients = admins;
         this.messages = [];
     
-    }
-
-    public async getParticipants() {
-        let res;
-        if (this.groupObj) {
-            res = this.totalParticipants;
-        }
-        return res;
     }
 }
