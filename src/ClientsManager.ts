@@ -8,14 +8,28 @@ export class ClientsManager {
         this.clients = {};
     }
 
+    public async getClient(clientId: string) {
+        return this.clients[clientId];
+    }
+
+    public newClient(clientId: string){
+        if (this.clients[clientId] != null){
+            throw new Error('Client already exists');
+        }
+        this.clients[clientId] = new ClientController(clientId, undefined, undefined, this);
+    }
+
     public async addClient(Client: ClientController) {
         this.clients[Client.getClientId()] = Client;
     }
 
     public async connectClients(clientIds: string[]){
+        let clients = [];
         for (let clientId of clientIds){
-            await this.connectClient(clientId);
+            let client = await this.connectClient(clientId);
+            clients.push(client);
         }
+        return clients;
     }
 
     private async getDisconnectedClients() {
@@ -28,13 +42,12 @@ export class ClientsManager {
     }
 
     private async connectClient(clientId: string) {
-        
         if (this.clients[clientId] != null){  
             let client = this.clients[clientId];
-            if ((await client.clientObj.getState()) == 'UNPAIRED')
-                await this.clients[clientId].connect();
-            this.clients[clientId].connect();
+            //if ((await client.clientObj.getState()) == 'UNPAIRED')
+            await this.clients[clientId].connect();
         }
+        return this.clients[clientId];
         //this.clients[clientId] = new Client({ authStrategy: new LocalAuth({ clientId: clientId }) });
         //await this.clients[clientId].initialize();
     }

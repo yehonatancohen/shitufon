@@ -27,7 +27,7 @@ export class ClientController {
 
 	public async recievedQrCode(qr: string) {
 		QRCode.generate(qr, { small: true });
-		this.Manager.qrReceived(this.clientId, qr);
+		//this.Manager.qrReceived(this.clientId, qr);
 	}
 
 	public async logOut(){
@@ -37,7 +37,12 @@ export class ClientController {
 	}
 
 	public async isConnected() {
-		return await this.clientObj.getState() == 'CONNECTED';
+		try {
+			let state = await this.clientObj.getState();
+			return state == 'CONNECTED';
+		} catch (e) {
+			return false;
+		}
 	}
 
 	public async isPaired() {
@@ -46,7 +51,7 @@ export class ClientController {
 
 	public async connect() {
 		await this.start();
-		if(this.profilePic != null){
+		if(this.profilePic.data != ""){
 			await this.clientObj.setProfilePicture(this.profilePic);
 		}
 		if(this.name != null){
@@ -72,14 +77,14 @@ export class ClientController {
 	public async start() {
 		if(await this.isConnected())
 			throw new Error('Client is already connected');
-		await this.clientObj.initialize();
-		await this.clientObj.on('qr', (qr) => {
-			this.recievedQrCode(qr);
-		});
 		return new Promise<void>((resolve) => {
+			this.clientObj.on('qr', (qr) => {
+				this.recievedQrCode(qr);
+			});
 			this.clientObj.on('ready', () => {
 				resolve();
 			});
+			this.clientObj.initialize();
 		});
 	}
 
@@ -88,7 +93,6 @@ export class ClientController {
 			throw new Error('Client is not connected');
 		let group = new Group(this);
 		await group.initialize(title, participants, admins, description, image, adminsOnly);
-		return this.clientObj.createGroup(title, participants);
 	}
 
 	public async getGroupById(groupId: string) {
@@ -100,6 +104,8 @@ export class ClientController {
 		}
 		return "Group not found";
 	}
+
+	
 }
 
 function getClientIds(){

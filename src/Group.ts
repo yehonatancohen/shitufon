@@ -49,6 +49,14 @@ export class Group {
         return this.clients;
     }
 
+    public async promoteParticipant(participantId: string) {
+        if (typeof this.groupObj == "string") {
+            return;
+        }
+        let groupObj = this.groupObj as GroupChat;
+        await groupObj.promoteParticipants([participantId]);
+    }
+
     private async updateCurrentParticipants() {
         // Update the current participants list and total participants according to the group
         if (this.groupObj) {
@@ -81,6 +89,15 @@ export class Group {
         }
         await this.groupObj.addParticipants([participant.getId()], {autoSendInviteV4: false});
         await this.updateCurrentParticipants();
+    }
+
+    private getParticipantByClient(client: ClientController) {
+        for (const participant of this.totalParticipants) {
+            if (participant.getId() == client.getClientId()) {
+                return participant;
+            }
+        }
+        return "Participant not found";
     }
 
     private getParticipantById(participantId: string) {
@@ -144,14 +161,19 @@ export class Group {
         return clientIds;
     }
 
-    private addAdmins(admins: ClientController[]) {
+    private async addAdmins(admins: ClientController[]) {
         // Adds clients to the group as admins
         if(typeof this.groupObj == "string") {
             return;
         }
-        this.groupObj.addParticipants(this.getClientIds(admins), {autoSendInviteV4: false});
+        await this.groupObj.addParticipants(this.getClientIds(admins), {autoSendInviteV4: false});
         for (const admin of admins) {
             if (!this.clients.includes(admin)) {
+                let participant = await this.createParticipant(admin.getClientId());
+                if (typeof participant == "string") {
+                    return;
+                }
+                await this.promoteParticipant(participant.getId());
                 this.clients.push(admin);
             }
         }
@@ -166,6 +188,7 @@ export class Group {
         await this.updateCurrentParticipants();
         this.groupId = result.gid._serialized;
         this.groupObj = await this.owner.getGroupById(this.groupId);
+        await this.addAdmins(admins);
         if (image != "") {
             await this.setImage(image);
         }

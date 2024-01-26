@@ -6,7 +6,8 @@ export class Participant {
     private isAdmin = false;
     private groups: Group[] = [];
     private participantObj: GroupParticipant | string = "";
-    
+    private sentMessages: Message[] = [];
+
     constructor(id : string) {
         this.id = id;
     }
@@ -25,4 +26,5 @@ export class Participant {
     public getId() {
         return this.id;
     }
+
 }
