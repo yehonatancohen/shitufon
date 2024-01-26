@@ -118,6 +118,9 @@ dist
 .DS_Store
 npm-debug.log*
 
+.wwebjs_auth
+.wwebjs_cache
+
 # yarn v2
 yarn-debug.log*
 yarn-error.log*
