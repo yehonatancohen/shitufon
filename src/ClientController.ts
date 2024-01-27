@@ -1,6 +1,7 @@
 import { Client, LocalAuth, MessageMedia, GroupChat } from 'whatsapp-web.js';
 import { ClientsManager } from './ClientsManager';
 import { Group } from './Group';
+import { formatPhoneNumber } from './Util';
 import QRCode from 'qrcode-terminal';
 
 export class ClientController {
@@ -23,17 +24,6 @@ export class ClientController {
 
 	public getClientId() {
 		return this.clientId;
-	}
-
-	public async recievedQrCode(qr: string) {
-		QRCode.generate(qr, { small: true });
-		//this.Manager.qrReceived(this.clientId, qr);
-	}
-
-	public async logOut(){
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
-		await this.clientObj.logout();
 	}
 
 	public async isConnected() {
@@ -60,6 +50,41 @@ export class ClientController {
    		await this.clientObj.sendPresenceAvailable();
 	}
 
+	public async start() {
+		if(await this.isConnected())
+			throw new Error('Client is already connected');
+		await this.createClient();
+	}
+
+	private async createClient(){
+		this.clientObj.on('qr', (qr) => {
+			this.recievedQrCode(qr);
+		});
+	
+		// Event listener for when the client is ready
+		const clientReady = new Promise<void>((resolve) => {
+			this.clientObj.on('ready', () => {
+				resolve();
+			})
+		});
+	
+		// Log in the client
+		this.clientObj.initialize();
+
+		await clientReady;
+	}
+	
+	public async recievedQrCode(qr: string) {
+		QRCode.generate(qr, { small: true });
+		//this.Manager.qrReceived(this.clientId, qr);
+	}
+
+	public async logOut(){
+		if(!(await this.isConnected()))
+			throw new Error('Client is not connected');
+		await this.clientObj.logout();
+	}
+
 	public async changeName(name: string) {
 		if(!(await this.isConnected()))
 			throw new Error('Client is not connected');
@@ -72,20 +97,6 @@ export class ClientController {
 			throw new Error('Client is not connected');
 		await this.clientObj.setProfilePicture(pic);
 		this.profilePic = pic;
-	}
-
-	public async start() {
-		if(await this.isConnected())
-			throw new Error('Client is already connected');
-		return new Promise<void>((resolve) => {
-			this.clientObj.on('qr', (qr) => {
-				this.recievedQrCode(qr);
-			});
-			this.clientObj.on('ready', () => {
-				resolve();
-			});
-			this.clientObj.initialize();
-		});
 	}
 
 	public async createGroup(title: string, participants: string[], admins: ClientController[] = [], description: string = "", image: string = "", adminsOnly: boolean = false) {
@@ -105,13 +116,23 @@ export class ClientController {
 		return "Group not found";
 	}
 
-	
-}
+	public async sendMessage(phoneNumber: string, message: string){
+		if(!(await this.isConnected()))
+			throw new Error('Client is not connected');
 
-function getClientIds(){
+		const chatId = formatPhoneNumber(phoneNumber);
+		const chat = await this.clientObj.getChatById(chatId);
+		await chat.sendMessage(message);
+	}
 
-}
-
-function setUpClient(){
-
+	public async add_participant(groupId: string, phoneNumber: string){
+		if(!(await this.isConnected()))
+			throw new Error('Client is not connected');
+		const chatId = formatPhoneNumber(groupId);
+		let chat = await this.clientObj.getChatById(chatId);
+		if(chat.isGroup == false){
+			return "Chat is not a group";
+		}
+		await (chat as GroupChat).addParticipants([formatPhoneNumber(phoneNumber)], {autoSendInviteV4: false});
+	}
 }

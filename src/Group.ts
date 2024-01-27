@@ -2,7 +2,7 @@ import { Client, GroupChat, Message, GroupParticipant, MessageMedia } from 'what
 import { ClientController } from './ClientController';
 import { ClientsManager } from './ClientsManager';
 import { Participant } from './Participant';
-import { sleep } from './Util';
+import { sleep, formatPhoneNumber } from './Util';
 
 export class Group {
     private groupObj: GroupChat | string;
@@ -78,17 +78,6 @@ export class Group {
             }
         }
         return added;
-    }
-
-    private async addParticipants(participant: Participant) {
-        if (this.totalParticipants.includes(participant)) {
-            return;
-        }
-        if (typeof this.groupObj == "string") {
-            return;
-        }
-        await this.groupObj.addParticipants([participant.getId()], {autoSendInviteV4: false});
-        await this.updateCurrentParticipants();
     }
 
     private getParticipantByClient(client: ClientController) {
@@ -201,5 +190,35 @@ export class Group {
         //this.clients = admins;
         this.messages = [];
     
+    }
+
+    public async add_participants(phone_numbers: string[], sleepTime: number = 20, every: number = 20, wait: number = 300) {
+        // Adds participants to the group
+        let client_index = 0;
+        let current_participants = 0
+        for (const phone_number of phone_numbers) {
+            let participant_id = formatPhoneNumber(phone_number);
+            let participant = await this.createParticipant(participant_id);
+            if (this.totalParticipants.includes(participant)) {
+                // Participant is already in the group
+                continue;
+            }
+            if (typeof participant == "string") {
+                // Participant not found
+                continue;
+            }
+            const client = this.clients[client_index];
+            client_index = (client_index + 1) % this.clients.length;
+            await client.add_participant(this.groupId ,phone_number);
+            await this.updateCurrentParticipants();
+            current_participants++;
+            if (current_participants % every == 0) {
+                console.log(`Added ${current_participants} participants, sleeping for ${wait} seconds`);
+                await sleep(wait);
+            } else {
+                await sleep(sleepTime);
+            }
+
+        }
     }
 }
