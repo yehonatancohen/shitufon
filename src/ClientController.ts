@@ -9,7 +9,7 @@ export class ClientController {
 	public clientObj;
 	private name: string;
 	private profilePic: MessageMedia;
-	private Manager;
+	public Manager;
 
     constructor(clientId_: string, profilePic = new MessageMedia("", "", null, null), name = "", Manager: ClientsManager) {
         this.clientId = clientId_;
@@ -26,7 +26,12 @@ export class ClientController {
 		return this.clientId;
 	}
 
+	public get_phone_number(){
+		return this.clientObj.info.wid._serialized;
+	}
+
 	public async isConnected() {
+		return false;
 		try {
 			let state = await this.clientObj.getState();
 			return state == 'CONNECTED';
@@ -51,8 +56,6 @@ export class ClientController {
 	}
 
 	public async start() {
-		if(await this.isConnected())
-			throw new Error('Client is already connected');
 		await this.createClient();
 	}
 
@@ -80,33 +83,26 @@ export class ClientController {
 	}
 
 	public async logOut(){
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
 		await this.clientObj.logout();
 	}
 
 	public async changeName(name: string) {
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
 		await this.clientObj.setDisplayName(name);
 		this.name = name;
 	}
 
 	public async changeProfilePic(pic: MessageMedia) {
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
 		await this.clientObj.setProfilePicture(pic);
 		this.profilePic = pic;
 	}
 
-	public async createGroup(title: string, participants: string[], admins: ClientController[] = [], description: string = "", image: string = "", adminsOnly: boolean = false) {
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
+	public async createGroup(title: string, participants: string[], admins: string[] = [], description: string = "", image: string = "", adminsOnly: boolean = false) {
 		let group = new Group(this);
 		await group.initialize(title, participants, admins, description, image, adminsOnly);
+		return group;
 	}
 
-	public async getGroupById(groupId: string) {
+	public async get_group_by_id(groupId: string) {
 		let groups = await this.clientObj.getChats();
 		for (let group of groups){
 			if(group.id._serialized == groupId){
@@ -116,23 +112,45 @@ export class ClientController {
 		return "Group not found";
 	}
 
-	public async sendMessage(phoneNumber: string, message: string){
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
+	public async get_groups_ids() {
+		let groups = await this.clientObj.getChats();
+		let groups_ids = [];
+		for (let group of groups){
+			groups_ids.push(group.id._serialized);
+		}
+		return groups_ids;
+	}
 
+	public async get_group_by_name(name: string){
+		let groups = await this.clientObj.getChats();
+		for (let group of groups){
+			if(group.name == name){
+				return group as GroupChat;
+			}
+		}
+		return;
+	}
+
+	public async sendMessage(phoneNumber: string, message: string){
 		const chatId = formatPhoneNumber(phoneNumber);
 		const chat = await this.clientObj.getChatById(chatId);
 		await chat.sendMessage(message);
 	}
 
 	public async add_participant(groupId: string, phoneNumber: string){
-		if(!(await this.isConnected()))
-			throw new Error('Client is not connected');
-		const chatId = formatPhoneNumber(groupId);
-		let chat = await this.clientObj.getChatById(chatId);
+		let chat = await this.clientObj.getChatById(groupId);
 		if(chat.isGroup == false){
 			return "Chat is not a group";
 		}
-		await (chat as GroupChat).addParticipants([formatPhoneNumber(phoneNumber)], {autoSendInviteV4: false});
+		let result = await (chat as GroupChat).addParticipants([formatPhoneNumber(phoneNumber)], {autoSendInviteV4: false});
+		if (result.code != 200){
+			this.Manager.logManager.error(`Error adding ${phoneNumber} to ${groupId}: ${result}`);
+			return result;
+		}
+		else
+		{
+			this.Manager.logManager.info(`Added ${phoneNumber} to ${groupId}`);
+			return true;
+		}
 	}
 }
