@@ -25,6 +25,13 @@ export class Group {
         this.createdAt = undefined;
     }
 
+    public get_group_obj() {
+        if (this.groupObj == "") {
+            return;
+        }
+        return this.groupObj as GroupChat;
+    }
+
     public async wasParticipantInGroup(participantId: string) {
         // Checking if the participant was in the group before
         await this.updateCurrentParticipants();
@@ -128,6 +135,7 @@ export class Group {
         if (result == null) {
             return false;
         }
+        this.owner.Manager.logManager.info(`Changed image in group ${this.groupId}`);
         return true;
     }
 
@@ -139,6 +147,7 @@ export class Group {
         if (result == null) {
             return false;
         }
+        this.owner.Manager.logManager.info(`Changed description in group ${this.groupId}`);
         return true;
     }
 
@@ -150,33 +159,57 @@ export class Group {
         return clientIds;
     }
 
-    private async addAdmins(admins: ClientController[]) {
+    private get_client_by_id(clientId: string) {
+        for (let client of this.clients) {
+            if (client.getClientId() == clientId) {
+                return client;
+            }
+        }
+        return "Client not found";
+    }
+
+    private async addAdmins(admins: string[]) {
         // Adds clients to the group as admins
         if(typeof this.groupObj == "string") {
             return;
         }
-        await this.groupObj.addParticipants(this.getClientIds(admins), {autoSendInviteV4: false});
-        for (const admin of admins) {
-            if (!this.clients.includes(admin)) {
-                let participant = await this.createParticipant(admin.getClientId());
-                if (typeof participant == "string") {
-                    return;
-                }
-                await this.promoteParticipant(participant.getId());
-                this.clients.push(admin);
-            }
+        if (admins.length == 0) {
+            return;
+        }
+        await this.groupObj.addParticipants(admins, {autoSendInviteV4: false});
+        let clients = await this.owner.Manager.get_clients(admins);
+        await this.add_participants(admins);
+
+        for (let admin of admins) {
+            await this.promoteParticipant(admin);
+        }
+        this.owner.Manager.logManager.info(`Promoted admins in group ${this.groupId}`);
+        for (let client of clients) {
+            this.clients.push(client);
         }
     }
 
-    public async initialize(title: string, totalParticipants: string[], admins: ClientController[], description: string, image: string, adminsOnly: boolean) {
-        let result = await this.owner.clientObj.createGroup(title, totalParticipants);
+    public async initialize(title: string, totalParticipants: string[], admins: string[], description: string, image: string, adminsOnly: boolean, group?: GroupChat) {
+        if(group){
+            this.groupObj = group;
+            this.groupId = group.id._serialized;
+            if (admins){
+                await this.addAdmins(admins);
+            }
+            await this.updateCurrentParticipants();
+            return;
+        }
+        let result = await this.owner.clientObj.createGroup(title, admins);
+        this.owner.Manager.logManager.info(`Created group ${title}`);
+        await this.add_participants(totalParticipants);
         await this.initParticipants(totalParticipants);
         if (typeof result == "string"){
+            this.owner.Manager.logManager.error(`Error creating group ${title}: ${result}`);
             return result; // ERROR
         }
         await this.updateCurrentParticipants();
         this.groupId = result.gid._serialized;
-        this.groupObj = await this.owner.getGroupById(this.groupId);
+        this.groupObj = await this.owner.get_group_by_id(this.groupId);
         await this.addAdmins(admins);
         if (image != "") {
             await this.setImage(image);
@@ -184,10 +217,7 @@ export class Group {
         if (description != "") {
             await this.setDescription(description);
         }
-        //this.addParticipantList(result.totalParticipants);
-        //this.totalParticipants = formattotalParticipants(totalParticipants);
         this.createdAt = new Date();
-        //this.clients = admins;
         this.messages = [];
     
     }
