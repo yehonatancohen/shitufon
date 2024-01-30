@@ -41,13 +41,6 @@ export class ClientsManager {
         }
     }
 
-    public newClient(clientId: string){
-        if (this.clients[clientId] != null){
-            return;
-        }
-        this.clients[clientId] = new ClientController(clientId, undefined, undefined, this);
-    }
-
     public async get_group_by_id(group_id: string){
         for (let clientId in this.clients){
             let client = this.clients[clientId];
@@ -68,11 +61,20 @@ export class ClientsManager {
         return groups;
     }
 
-    public get_client_numbers(){
+    public get_client_numbers(client_ids?: string[]){
+        if (client_ids == undefined){
+            let numbers = [];
+            for (let clientId in this.clients){
+                let client = this.clients[clientId];
+                numbers.push(client.get_phone_number());
+            }
+            return numbers;
+        }
         let numbers = [];
-        for (let clientId in this.clients){
+        for (let clientId in client_ids){
             let client = this.clients[clientId];
-            numbers.push(client.get_phone_number());
+            if (client)
+                numbers.push(client.get_phone_number());
         }
         return numbers;
     }
@@ -125,12 +127,11 @@ export class ClientsManager {
         let clients = [];
         for (let clientId of clientIds){
             console.log("Connecting client " + clientId);
-            this.newClient(clientId);
             let client = await this.connectClient(clientId);
             this.logManager.info(`Client ${clientId} connected`);
-            let groups_ids = await client.get_groups_ids();
-            this.add_group_ids(groups_ids);
-            this.logManager.info(`Loaded ${groups_ids.length} groups from client ${clientId}`);
+            //let groups_ids = await client.get_groups_ids();
+            //await this.add_group_ids(groups_ids);
+            //this.logManager.info(`Loaded ${groups_ids.length} groups from client ${clientId}`);
             clients.push(client);
         }
         return clients;
@@ -165,11 +166,11 @@ export class ClientsManager {
     }
 
     private async connectClient(clientId: string) {
-        if (this.clients[clientId] != null){  
-            let client = this.clients[clientId];
-            await this.clients[clientId].connect();
+        let client = this.clients[clientId] = new ClientController(clientId, undefined, undefined, this);
+        if (this.clients[clientId] != null && this.clients[clientId].clientObj.pupBrowser == null){  
+            await client.connect();
         }
-        return this.clients[clientId];
+        return client;
     }
 
     public getClientIds(clients: ClientController[]) {
@@ -265,6 +266,7 @@ export class ClientsManager {
     public async create_group(owner: string, title: string, participants: string[], admins: string[] = [], description: string = "", image: string = "", adminsOnly: boolean = false)
     {
         let owner_client = this.getClient(owner);
+        admins = this.get_client_numbers(admins);
         let created_group = await owner_client.createGroup(title, participants, admins, description, image, adminsOnly);
         if (created_group.get_group_obj() == null){
             this.logManager.error(`Error creating group ${title}: ${created_group}`);
@@ -272,6 +274,7 @@ export class ClientsManager {
         }
         await this.add_group(created_group.get_group_obj() as GroupChat);
         this.logManager.info(`Finished creating group ${title} with ${participants.length} participants`);
+        return created_group;
     }
 
     public async find_admin_of_group(group_id: string): Promise<string | ClientController>{
@@ -286,7 +289,7 @@ export class ClientsManager {
             return "Group not found";
         }
         group = group as GroupChat;
-        let client_ids = this.get_client_ids();
+        let client_ids = this.get_client_numbers();
         group.participants.forEach((participant) => {
             if (participant.isAdmin && participant.id._serialized in client_ids){
                 return this.get_client_by_id(participant.id._serialized) as ClientController;

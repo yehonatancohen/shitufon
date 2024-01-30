@@ -103,7 +103,13 @@ export class ClientController {
 	}
 
 	public async get_group_by_id(groupId: string) {
-		let groups = await this.clientObj.getChats();
+		let groups;
+		try{
+			groups = await this.clientObj.getChats();
+		}
+		catch{
+			return "Client not found";
+		}
 		for (let group of groups){
 			if(group.id._serialized == groupId){
 				return group as GroupChat;
