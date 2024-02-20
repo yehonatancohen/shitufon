@@ -71,8 +71,8 @@ export class ClientsManager {
             return numbers;
         }
         let numbers = [];
-        for (let clientId in client_ids){
-            let client = this.clients[clientId];
+        for (let i = 0; i < client_ids.length; i++){
+            let client = this.clients[client_ids[i]];
             if (client)
                 numbers.push(client.get_phone_number());
         }
