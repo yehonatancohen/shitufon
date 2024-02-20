@@ -32,6 +32,10 @@ export class Group {
         return this.groupObj as GroupChat;
     }
 
+    public getGroupId() {
+        return this.groupId;
+    }
+
     public async wasParticipantInGroup(participantId: string) {
         // Checking if the participant was in the group before
         await this.updateCurrentParticipants();
@@ -209,7 +213,15 @@ export class Group {
         }
         await this.updateCurrentParticipants();
         this.groupId = result.gid._serialized;
-        this.groupObj = await this.owner.get_group_by_id(this.groupId);
+        let tries = 0;
+        do {
+            await sleep(1);
+            this.groupObj = await this.owner.get_group_by_id(this.groupId);
+            tries++;
+        } while (this.groupObj == "Group not found" && tries < 10);
+        if (this.groupObj == "Group not found") {
+            return "Group not found";
+        }
         await this.addAdmins(admins);
         if (image != "") {
             await this.setImage(image);
