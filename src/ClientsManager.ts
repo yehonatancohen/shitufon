@@ -291,7 +291,7 @@ export class ClientsManager {
         group = group as GroupChat;
         let client_ids = this.get_client_numbers();
         group.participants.forEach((participant) => {
-            if (participant.isAdmin && participant.id._serialized in client_ids){
+            if (participant.isAdmin && client_ids.includes(participant.id._serialized)){
                 return this.get_client_by_id(participant.id._serialized) as ClientController;
             }
         });
