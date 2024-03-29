@@ -101,7 +101,7 @@ export class ClientsManager {
     private get_client_by_id(client_id: string){
         for (let clientId in this.clients){
             let client = this.clients[clientId];
-            if (client.getClientId() == client_id){
+            if (client.get_phone_number() == client_id){
                 return client;
             }
         }
@@ -204,13 +204,12 @@ export class ClientsManager {
     }
 
     private async create_exiting_group(group_id: string, clients: string[]){
-        //let clients = this.client_ids_to_object(clientIds);
         let groupObj = await this.get_group_by_id(group_id);
         if (groupObj == null){
             this.logManager.error(`Group ${group_id} not found`);
             return;
         }
-        let owner = this.get_client_by_id(groupObj.owner.user);
+        let owner = this.get_client_by_id(groupObj.owner._serialized);
         if (owner == null || typeof owner == "string"){
             this.logManager.error(`Owner of group ${group_id} not found`);
             return;
@@ -221,7 +220,7 @@ export class ClientsManager {
         let participants = groupObj.participants;
         let description = groupObj.description;
 
-        await group.initialize(title, [],  clients, description, image, false, groupObj as GroupChat);
+        await group.initialize(title, [],  clients, description, image, false, groupObj);
         return group;
     }
 
@@ -268,11 +267,14 @@ export class ClientsManager {
         let owner_client = this.getClient(owner);
         admins = this.get_client_numbers(admins);
         let created_group = await owner_client.createGroup(title, participants, admins, description, image, adminsOnly);
-        if (created_group.get_group_obj() == null){
+        if (created_group.get_group_obj() == undefined){
             this.logManager.error(`Error creating group ${title}: ${created_group}`);
             return;
         }
-        await this.add_group(created_group.get_group_obj() as GroupChat);
+        let groupObj = created_group.get_group_obj();
+        if (groupObj) {
+            this.add_group(groupObj);
+        }
         this.logManager.info(`Finished creating group ${title} with ${participants.length} participants`);
         return created_group;
     }
@@ -290,11 +292,13 @@ export class ClientsManager {
         }
         group = group as GroupChat;
         let client_ids = this.get_client_numbers();
-        group.participants.forEach((participant) => {
-            if (participant.isAdmin && client_ids.includes(participant.id._serialized)){
-                return this.get_client_by_id(participant.id._serialized) as ClientController;
-            }
+        let adminClient = group.participants.find((participant) => {
+            return participant.isAdmin && client_ids.includes(participant.id._serialized);
         });
+
+        if (adminClient) {
+            return this.get_client_by_id(adminClient.id._serialized);
+        }
         return "Admin not found in group " + group_id;
     }
 
