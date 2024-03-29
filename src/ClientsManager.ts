@@ -1,12 +1,14 @@
-import { GroupChat } from 'whatsapp-web.js';
+import WAWebJS, { GroupChat } from 'whatsapp-web.js';
 import { ClientController } from './ClientController';
-import { sleep } from './Util';
+import { MessageData } from './MessageData';
+import { formatPhoneNumber, sleep } from './Util';
 import { LogManager } from './LogManager';
 import { Group } from './Group';
+import { Participant } from './Participant';
 
 export class ClientsManager {
     public clients: { [clientId: string]: ClientController };
-    public logManager: LogManager;
+    static logManager: LogManager;
     public groupsObj: GroupChat[];
     private groups: Group[];
 
@@ -14,8 +16,8 @@ export class ClientsManager {
         this.clients = {};
         this.groupsObj = [];
         this.groups = [];
-        this.logManager = new LogManager();
-        this.logManager.info("ClientsManager initialized");
+        ClientsManager.logManager = new LogManager();
+        ClientsManager.logManager.info("ClientsManager initialized");
     }
 
     public getClient(clientId: string) {
@@ -29,7 +31,7 @@ export class ClientsManager {
     public async add_group_id(group_id: string){
         let group = await this.get_group_by_id(group_id);
         if (group == null){
-            this.logManager.error(`Group ${group_id} not found`);
+            ClientsManager.logManager.error(`Group ${group_id} not found`);
             return;
         }
         this.groupsObj.push(group);
@@ -128,10 +130,10 @@ export class ClientsManager {
         for (let clientId of clientIds){
             console.log("Connecting client " + clientId);
             let client = await this.connectClient(clientId);
-            this.logManager.info(`Client ${clientId} connected`);
+            ClientsManager.logManager.info(`Client ${clientId} connected`);
             //let groups_ids = await client.get_groups_ids();
             //await this.add_group_ids(groups_ids);
-            //this.logManager.info(`Loaded ${groups_ids.length} groups from client ${clientId}`);
+            //ClientsManager.logManager.info(`Loaded ${groups_ids.length} groups from client ${clientId}`);
             clients.push(client);
         }
         return clients;
@@ -207,12 +209,12 @@ export class ClientsManager {
         //let clients = this.client_ids_to_object(clientIds);
         let groupObj = await this.get_group_by_id(group_id);
         if (groupObj == null){
-            this.logManager.error(`Group ${group_id} not found`);
+            ClientsManager.logManager.error(`Group ${group_id} not found`);
             return;
         }
         let owner = this.get_client_by_id(groupObj.owner.user);
         if (owner == null || typeof owner == "string"){
-            this.logManager.error(`Owner of group ${group_id} not found`);
+            ClientsManager.logManager.error(`Owner of group ${group_id} not found`);
             return;
         }
         let group = new Group(owner);
@@ -225,17 +227,61 @@ export class ClientsManager {
         return group;
     }
 
-    public async send_messages(clientIds: string[], phone_numbers: string[], message: string, sleepTime: number = 5, every: number = 20, wait: number = 60) {
+    public async redirect_message(clientId: string, message: string, phone_number: string) {
+        let client = this.clients[clientId];
+        await client.sendMessage(phone_number, message);
+    }
+
+    public async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
+        let client = this.clients[clientId];
+        if (message.type != WAWebJS.MessageTypes.TEXT || message.body == undefined || message.body == null)
+            return;
+        let main_client_obj = main_client == "" ? clientId : main_client;
+        main_number = main_number == "" ? client.get_phone_number() : main_number;
+        main_number = formatPhoneNumber(main_number);
+        if (sender_number == main_number)
+        {
+            if (message.hasQuotedMsg) {
+                let org_message = await message.getQuotedMessage();
+                let sliced_message = org_message.body.split("\n");
+                let recepient_number = sliced_message.slice(0)[0];
+                let clientId =  sliced_message.slice(1)[0];
+                if (clientId == "" || clientId == undefined || clientId == null)
+                    return;
+                let client = this.getClient(clientId);
+                await client.sendMessage(recepient_number, message.body);
+            }
+        }
+        else
+        {
+            let edited_message =  sender_number + "\n" + clientId + "\n" + message.body;
+            this.redirect_message(main_client, edited_message, main_number);
+            ClientsManager.logManager.info(`Received message from ${sender_number} to ${client.getClientId()}: ${message.body}`);
+        }
+    
+    }
+
+    public async add_message_listener(clientIds: string[], main_number: string = "", main_client: string = "") {
+        for (let clientId of clientIds){
+            let client = this.clients[clientId];
+            console.log("added listener");
+            client.clientObj.on('message', async message =>{
+                await this.message_callback(clientId, message, message.from, main_number, main_client);
+            });
+        }
+    }
+
+    public async send_messages(clientIds: string[], phone_numbers: string[], messages: string[], sleepTime: number = 5, every: number = 20, wait: number = 60) {
         let current_messages = 0
         if (clientIds.length == 1) {
             const client = this.getClient(clientIds[0]);
             for (let phone_number of phone_numbers) {
-                await client.sendMessage(phone_number, message);
-                this.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
+                await client.sendMessage(phone_number, messages[current_messages % messages.length]);
+                ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
                 await sleep(sleepTime);
                 current_messages++;
                 if (current_messages % every == 0) {
-                    this.logManager.info(`Sent ${current_messages} messages, sleeping for ${wait} seconds`);
+                    ClientsManager.logManager.info(`Sent ${current_messages} messages, sleeping for ${wait} seconds`);
                     await sleep(wait);
                 }
             }
@@ -251,13 +297,13 @@ export class ClientsManager {
         let client_index = 0;
         for (let phone_number of phone_numbers) {
             const client = clients[client_index];
-            await client.sendMessage(phone_number, message);
-            this.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
+            await client.sendMessage(phone_number, messages[current_messages % messages.length]);
+            ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
             client_index = (client_index + 1) % clients.length;
             await sleep(sleepTime);
             current_messages++;
             if (current_messages % every == 0) {
-                this.logManager.info(`Sent ${current_messages} messages, sleeping for ${wait} seconds`);
+                ClientsManager.logManager.info(`Sent ${current_messages} messages, sleeping for ${wait} seconds`);
                 await sleep(wait);
             }
         }
@@ -269,12 +315,62 @@ export class ClientsManager {
         admins = this.get_client_numbers(admins);
         let created_group = await owner_client.createGroup(title, participants, admins, description, image, adminsOnly);
         if (created_group.get_group_obj() == null){
-            this.logManager.error(`Error creating group ${title}: ${created_group}`);
+            ClientsManager.logManager.error(`Error creating group ${title}: ${created_group}`);
             return;
         }
         await this.add_group(created_group.get_group_obj() as GroupChat);
-        this.logManager.info(`Finished creating group ${title} with ${participants.length} participants`);
+        ClientsManager.logManager.info(`Finished creating group ${title} with ${participants.length} participants`);
         return created_group;
+    }
+
+    public async auto_respond(messages : string[], response : string)
+    {
+        let not_recieved = true;
+        let returned_message = "";
+        let client = this.clients[Object.keys(this.clients)[0]];
+        client.clientObj.on('message', async (message) => {
+            if (messages.includes(message.body)) {
+                not_recieved = false;
+                returned_message = response;
+                await client.sendMessage(message.from, response);
+            }
+        });
+        while (not_recieved)
+        {
+            await sleep(1);
+        }
+        return returned_message;
+    }
+
+    public async recieve_message(main_client : string, phone_number: string)
+    {
+        phone_number = formatPhoneNumber(phone_number);
+        let client = this.get_client_by_id(main_client);
+        if (client == "Client not found") {
+            return "Client not found";
+        }
+        client = client as ClientController;
+        
+        let sent_message = await client.sendMessage(phone_number, "Please send me a message");
+        
+        let not_recieved = true;
+
+        let returned_message = "";
+
+        await client.clientObj.on('message', async (message) => {
+            let quoted_message = await message.getQuotedMessage();
+            
+            if (message.from === phone_number && message.hasQuotedMsg && quoted_message.id._serialized == sent_message.id._serialized) {
+                not_recieved = false;
+                returned_message = message.body;
+            }
+        });
+        while (not_recieved)
+        {
+            await sleep(1);
+        }
+
+        return returned_message;
     }
 
     public async find_admin_of_group(group_id: string): Promise<string | ClientController>{
@@ -308,16 +404,16 @@ export class ClientsManager {
     }
 
     public async add_participants_to_group(clientIds: string[], groupId: string, phone_numbers: string[], sleepTime: number = 20, every: number = 20, wait: number = 300) {
-        this.logManager.info(`Starting task: Adding ${phone_numbers.length} participants to group ${groupId}`);
+        ClientsManager.logManager.info(`Starting task: Adding ${phone_numbers.length} participants to group ${groupId}`);
         let admin = await this.find_admin_of_group(groupId);
         if (typeof admin == "string"){
-            this.logManager.error(`Error adding participants to group ${groupId}: ${admin}`);
+            ClientsManager.logManager.error(`Error adding participants to group ${groupId}: ${admin}`);
             return;
         }
         admin = admin as ClientController;
         let group = await this.get_group(groupId, clientIds);
         if (group == null || typeof group == "string"){
-            this.logManager.error(`Error adding participants to group ${groupId}: ${group}`);
+            ClientsManager.logManager.error(`Error adding participants to group ${groupId}: ${group}`);
             return;
         }
         let current_added = 0
@@ -325,12 +421,12 @@ export class ClientsManager {
             for (let phone_number of phone_numbers) {
                 let result = await admin.add_participant(groupId, phone_number);
                 if (!result){
-                    this.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
+                    ClientsManager.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
                 }
                 await sleep(sleepTime);
                 current_added++;
                 if (current_added % every == 0) {
-                    this.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
+                    ClientsManager.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
                     await sleep(wait);
                 }
             }
@@ -343,12 +439,12 @@ export class ClientsManager {
             client_index = (client_index + 1) % clientIds.length;
             let result = await client.add_participant(groupId, phone_number);
             if (!result){
-                this.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
+                ClientsManager.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
             }
             await sleep(sleepTime);
             current_added++;
             if (current_added % every == 0) {
-                this.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
+                ClientsManager.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
                 await sleep(wait);
             }
         }

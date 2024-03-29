@@ -140,7 +140,7 @@ export class ClientController {
 	public async sendMessage(phoneNumber: string, message: string){
 		const chatId = formatPhoneNumber(phoneNumber);
 		const chat = await this.clientObj.getChatById(chatId);
-		await chat.sendMessage(message);
+		return await chat.sendMessage(message);
 	}
 
 	public async add_participant(groupId: string, phoneNumber: string){
@@ -150,12 +150,12 @@ export class ClientController {
 		}
 		let result = await (chat as GroupChat).addParticipants([formatPhoneNumber(phoneNumber)], {autoSendInviteV4: false});
 		if (result.code != 200){
-			this.Manager.logManager.error(`Error adding ${phoneNumber} to ${groupId}: ${result}`);
+			ClientsManager.logManager.error(`Error adding ${phoneNumber} to ${groupId}: ${result}`);
 			return result;
 		}
 		else
 		{
-			this.Manager.logManager.info(`Added ${phoneNumber} to ${groupId}`);
+			ClientsManager.logManager.info(`Added ${phoneNumber} to ${groupId}`);
 			return true;
 		}
 	}
