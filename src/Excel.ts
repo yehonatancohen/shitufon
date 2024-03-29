@@ -56,7 +56,7 @@ function processFile(allFilesContent: string[]): any[]{
     return combinedContent;
 }
 
-async function extractPhoneNumbers(fileNames: string[], exclude: string[]): Promise<any[]>{
+function extractPhoneNumbers(fileNames: string[], exclude: string[]): any[]{
     let allFilesContent : any[] = [];
     let excludeContent : any[] = [];
     for (let i = 0; i < fileNames.length; i++){

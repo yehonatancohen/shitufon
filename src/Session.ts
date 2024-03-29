@@ -1,19 +1,19 @@
-import { Group } from './Group';
 import { ClientController } from './ClientController';
-import { Client } from 'whatsapp-web.js';
 import { ClientsManager } from './ClientsManager';
-import { generate } from 'qrcode-terminal';
 
-class Session {
+export class Session {
     protected sessionId: number;
     protected cm: ClientsManager;
-    clients: string[];
-    messages: string[];
-    sessionType: string;
-    recipients: string[];
+    protected clients: { [clientId: string]: ClientController };
+    protected clientIds: string[];
+    protected sessionType: string;
 
-    constructor(sessionType : string) {
+    constructor(cm: ClientsManager) {
+        this.cm = cm;
+        this.sessionType = "General";
         this.sessionId = this.generateId();
+        this.clients = {};
+        this.clientIds = [];
     }
 
     protected generateId()
@@ -30,12 +30,7 @@ class Session {
 
     public async startSession(clientIds: string[])
     {
-        await this.connectClient(clientIds);
-    }
-
-    protected async connectClient(clientIds: string[])
-    {
-
+        // start session
     }
 
     protected handleError(error: Error)
@@ -46,5 +41,33 @@ class Session {
                 ;
                 break;
         }
+    }
+
+    protected async connectClients(clientIds: string[])
+    {
+        return await this.cm.connectClients(clientIds);
+    }
+
+    protected async initClients(clientIds: string[])
+    {
+        let clients = await this.connectClients(clientIds);
+        for (let client of clients) {
+            this.clients[client.getClientId()] = client;
+        }
+    }
+
+    protected getClientsLength()
+    {
+        return Object.keys(this.clients).length;
+    }
+
+    protected loadSession()
+    {
+        // load session
+    }
+
+    protected saveSession()
+    {
+        // save session
     }
 }
