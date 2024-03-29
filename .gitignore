@@ -132,3 +132,5 @@ yarn-error.log*
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
+
+src/index.ts

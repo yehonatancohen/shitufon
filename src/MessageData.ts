@@ -1,7 +1,7 @@
 import { Client, GroupChat, Message, GroupParticipant, MessageMedia } from 'whatsapp-web.js';
 import { Participant } from './Participant';
 
-class MessageData {
+export class MessageData {
     private messageObj: Message;
     private message: string;
     private senderObj: Participant;

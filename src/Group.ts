@@ -15,12 +15,12 @@ export class Group {
     private currentParticipants: Participant[];
 
     constructor(owner: ClientController) {
-        this.groupId = "";
+        this.groupId = "Not initialized yet";
         this.clients = [];
         this.messages = [];
         this.totalParticipants = [];
         this.currentParticipants = [];
-        this.groupObj = "";
+        this.groupObj = "Not initialized yet";
         this.owner = owner;
         this.createdAt = undefined;
     }
@@ -139,7 +139,7 @@ export class Group {
         if (result == null) {
             return false;
         }
-        this.owner.Manager.logManager.info(`Changed image in group ${this.groupId}`);
+        ClientsManager.logManager.info(`Changed image in group ${this.groupId}`);
         return true;
     }
 
@@ -151,7 +151,7 @@ export class Group {
         if (result == null) {
             return false;
         }
-        this.owner.Manager.logManager.info(`Changed description in group ${this.groupId}`);
+        ClientsManager.logManager.info(`Changed description in group ${this.groupId}`);
         return true;
     }
 
@@ -187,7 +187,7 @@ export class Group {
         for (let admin of admins) {
             await this.promoteParticipant(admin);
         }
-        this.owner.Manager.logManager.info(`Promoted admins in group ${this.groupId}`);
+        ClientsManager.logManager.info(`Promoted admins in group ${this.groupId}`);
         for (let client of clients) {
             this.clients.push(client);
         }
@@ -204,11 +204,11 @@ export class Group {
             return;
         }
         let result = await this.owner.clientObj.createGroup(title, admins);
-        this.owner.Manager.logManager.info(`Created group ${title}`);
+        ClientsManager.logManager.info(`Created group ${title}`);
         await this.add_participants(totalParticipants);
         await this.initParticipants(totalParticipants);
         if (typeof result == "string"){
-            this.owner.Manager.logManager.error(`Error creating group ${title}: ${result}`);
+            ClientsManager.logManager.error(`Error creating group ${title}: ${result}`);
             return result; // ERROR
         }
         await this.updateCurrentParticipants();
