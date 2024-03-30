@@ -155,15 +155,6 @@ export class ClientsManager {
         return clients;
     }
 
-    private async getDisconnectedClients() {
-        let disconnectedClients: ClientController[] = [];
-        for (let clientId in this.clients){
-            if (!(await this.clients[clientId].isPaired()))
-                disconnectedClients.push(this.clients[clientId]);
-        }
-        return disconnectedClients;
-    }
-
     private async connectClient(clientId: string) {
         let client = this.clients[clientId] = new ClientController(clientId, undefined, undefined, this);
         if (this.clients[clientId] != null && this.clients[clientId].clientObj.pupBrowser == null){  

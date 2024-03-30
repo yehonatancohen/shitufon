@@ -6,6 +6,8 @@ import QRCode from 'qrcode-terminal';
 
 export class ClientController {
 	private clientId;
+	protected messagingLevel;
+	protected groupsLevel;
 	public clientObj;
 	private name: string;
 	private profilePic: MessageMedia;
@@ -13,13 +15,26 @@ export class ClientController {
 
     constructor(clientId_: string, profilePic = new MessageMedia("", "", null, null), name = "", Manager: ClientsManager) {
         this.clientId = clientId_;
-		this.Manager = Manager;
-		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ })});
+		this.messagingLevel = 0; // Initialize messagingLevel
+		this.groupsLevel = 0; // Initialize messagingLevel
 		this.profilePic = profilePic;
 		this.name = name;
+		this.loadClient();
+		this.Manager = Manager;
+		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ })});		
 		if(name == ""){
 			this.name = clientId_;
 		}
+	}
+
+	private loadClient()
+	{
+		// Load the client from the database
+	}
+
+	private saveClient()
+	{
+		// Save the client to the database 
 	}
 
 	public getClientId() {
@@ -28,20 +43,6 @@ export class ClientController {
 
 	public get_phone_number(){
 		return this.clientObj.info.wid._serialized;
-	}
-
-	public async isConnected() {
-		return false;
-		try {
-			let state = await this.clientObj.getState();
-			return state == 'CONNECTED';
-		} catch (e) {
-			return false;
-		}
-	}
-
-	public async isPaired() {
-		return ((await this.clientObj.getState()) == 'PAIRING') || ((await this.clientObj.getState()) == 'CONNECTED');
 	}
 
 	public async connect() {
