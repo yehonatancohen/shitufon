@@ -3,6 +3,7 @@ import { ClientsManager } from './ClientsManager';
 import { Group } from './Group';
 import { formatPhoneNumber } from './Util';
 import QRCode from 'qrcode-terminal';
+import { error } from 'console';
 
 export class ClientController {
 	private clientId;
@@ -12,16 +13,18 @@ export class ClientController {
 	private name: string;
 	private profilePic: MessageMedia;
 	public Manager;
+	public connected: boolean;
 
     constructor(clientId_: string, profilePic = new MessageMedia("", "", null, null), name = "", Manager: ClientsManager) {
         this.clientId = clientId_;
+		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ }), webVersion: '2.2412.50'});
+		this.connected = false;
 		this.messagingLevel = 0; // Initialize messagingLevel
 		this.groupsLevel = 0; // Initialize messagingLevel
 		this.profilePic = profilePic;
 		this.name = name;
 		this.loadClient();
 		this.Manager = Manager;
-		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ })});		
 		if(name == ""){
 			this.name = clientId_;
 		}
@@ -57,12 +60,27 @@ export class ClientController {
 	}
 
 	public async start() {
-		await this.createClient();
+		await this.createClient().catch((error) => this.errorCallback(error));
+	}
+
+	private errorCallback(error: any)
+	{
+		ClientsManager.logManager.error(`Error creating client ${this.clientId}: ${error}`);
 	}
 
 	private async createClient(){
 		this.clientObj.on('qr', (qr) => {
 			this.recievedQrCode(qr);
+		});
+
+		this.clientObj.on('disconnected', (reason) => {
+			ClientsManager.logManager.error(`Client ${this.clientId} disconnected: ${reason}`);
+			this.connected = false;
+		});
+
+		this.clientObj.on('auth_failure', async (message) => {
+			ClientsManager.logManager.error(`Client ${this.clientId} auth failure: ${message}`);
+			this.connected = false;
 		});
 	
 		// Event listener for when the client is ready
@@ -71,9 +89,11 @@ export class ClientController {
 				resolve();
 			})
 		});
-	
+		
+		this.connected = true;
+		
 		// Log in the client
-		this.clientObj.initialize();
+		await this.clientObj.initialize();
 
 		await clientReady;
 	}
@@ -85,6 +105,7 @@ export class ClientController {
 
 	public async logOut(){
 		await this.clientObj.logout();
+		this.connected = false;
 	}
 
 	public async changeName(name: string) {
@@ -141,7 +162,15 @@ export class ClientController {
 	public async sendMessage(phoneNumber: string, message: string){
 		const chatId = formatPhoneNumber(phoneNumber);
 		const chat = await this.clientObj.getChatById(chatId);
+		this.messagingLevel++;
 		return await chat.sendMessage(message);
+	}
+
+	public async sendMedia(phoneNumber: string, media: MessageMedia){
+		const chatId = formatPhoneNumber(phoneNumber);
+		const chat = await this.clientObj.getChatById(chatId);
+		this.messagingLevel++;
+		return await chat.sendMessage(media);
 	}
 
 	public async add_participant(groupId: string, phoneNumber: string){

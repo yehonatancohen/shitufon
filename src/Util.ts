@@ -25,6 +25,12 @@ export async function clientsToParticipants(clients: Client[], gc: GroupChat) {
     return participants;
 }
 
+export function idToPhoneNumber(participant_id: string) {
+    const numericOnly = participant_id.replace(/\D/g, '');
+    const trimmedNumber = numericOnly.startsWith('972') ? numericOnly.slice(3) : numericOnly;
+    return `0${trimmedNumber}`;
+}
+
 export function formatPhoneNumber(phoneNumber: string) {
     const numericOnly = phoneNumber.replace(/\D/g, '');
     const trimmedNumber = numericOnly.startsWith('0') ? numericOnly.slice(1) : numericOnly;

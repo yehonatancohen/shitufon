@@ -103,7 +103,7 @@ export class ClientsManager {
     private get_client_by_id(client_id: string){
         for (let clientId in this.clients){
             let client = this.clients[clientId];
-            if (client.get_phone_number() == client_id){
+            if (client.getClientId() == client_id){
                 return client;
             }
         }

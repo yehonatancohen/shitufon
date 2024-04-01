@@ -3,7 +3,7 @@ export class DbManager {
 
     constructor() {
         // Initialize your database connection here
-        this.connection = initializeDatabaseConnection();
+        //this.connection = initializeDatabaseConnection();
     }
 
     public async connect(): Promise<void> {

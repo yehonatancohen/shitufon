@@ -50,7 +50,13 @@ export class Session {
 
     protected async initClients(clientIds: string[])
     {
-        let clients = await this.connectClients(clientIds);
+        let dissconnectedClients: string[] = [];
+        for (let clientId of clientIds)
+        {
+            if (!this.cm.clients[clientId] || this.cm.clients[clientId].connected == false)
+                dissconnectedClients.push(clientId);
+        }
+        let clients = await this.connectClients(clientIds.filter(clientId => dissconnectedClients.includes(clientId)));
         for (let client of clients) {
             this.clients[client.getClientId()] = client;
         }

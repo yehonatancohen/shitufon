@@ -31,11 +31,11 @@ export class MessagesSession extends Session {
         this.initMessages();
     }
 
-    public async startSession(clientIds: string[]) {
-        await this.send_messages(clientIds, this.phoneNumbers, this.messageBody);
+    public async startSession() {
+        await this.send_messages(this.clientIds, this.phoneNumbers, this.messageBody);
     }
     
-    public async send_messages(clientIds: string[], phone_numbers: string[], messages: string[]) {
+    private async send_messages(clientIds: string[], phone_numbers: string[], messages: string[]) {
         let current_messages = 0
         if (clientIds.length == 1) {
             const client = this.cm.getClient(clientIds[0]);
@@ -63,6 +63,8 @@ export class MessagesSession extends Session {
         let client_index = 0;
         for (let phone_number of phone_numbers) {
             const client = clients[client_index];
+            if (client.connected == false)
+                continue;
             await client.sendMessage(phone_number, messages[current_messages % messages.length]);
             ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
             client_index = (client_index + 1) % clients.length;
