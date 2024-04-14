@@ -7,18 +7,18 @@ import { type } from "os";
 
 export class GroupSession extends Session
 {
-    protected groupCreated: Group;
+    //protected groupCreated: Group;
     protected participantsAdded: Participant[];
     protected participantsToAdd: Participant[];
-    protected ownerClient: ClientController;
+    protected ownerClient: ClientController | string;
 
     constructor(cm: ClientsManager, owner_id: string, )
     {
         super(cm);
-        if (typeof cm.get_client_by_id(owner_id) != "string")
-        {
-            this.ownerClient = cm.get_client_by_id(owner_id); 
-        }
+        //if (typeof cm.get_client_by_id(owner_id) != "string")
+        this.ownerClient = cm.get_client_by_id(owner_id); 
+        this.participantsAdded = [];
+        this.participantsToAdd = [];
     }
 
     private async create_exiting_group(group_id: string, clients: string[]){
