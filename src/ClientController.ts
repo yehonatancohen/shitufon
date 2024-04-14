@@ -7,7 +7,7 @@ import { error } from 'console';
 
 export class ClientController {
 	private clientId;
-	protected messagingLevel;
+	public messagingLevel;
 	protected groupsLevel;
 	public clientObj;
 	private name: string;
@@ -17,7 +17,7 @@ export class ClientController {
 
     constructor(clientId_: string, profilePic = new MessageMedia("", "", null, null), name = "", Manager: ClientsManager) {
         this.clientId = clientId_;
-		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ }), webVersion: '2.2412.50'});
+		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ }), webVersion: '2.2411.2'});
 		this.connected = false;
 		this.messagingLevel = 0; // Initialize messagingLevel
 		this.groupsLevel = 0; // Initialize messagingLevel
@@ -74,7 +74,12 @@ export class ClientController {
 		});
 
 		this.clientObj.on('disconnected', (reason) => {
-			ClientsManager.logManager.error(`Client ${this.clientId} disconnected: ${reason}`);
+			if (reason == "NAVIGATION"){
+				ClientsManager.logManager.error(`Client ${this.clientId} probably banned`);
+				this.connected = false;
+			}
+			else
+				ClientsManager.logManager.error(`Client ${this.clientId} disconnected: ${reason}`);
 			this.connected = false;
 		});
 

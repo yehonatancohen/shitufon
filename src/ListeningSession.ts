@@ -3,6 +3,9 @@ import { ClientsManager } from './ClientsManager';
 import WAWebJS, { MessageMedia } from 'whatsapp-web.js';
 import { formatPhoneNumber, idToPhoneNumber} from './Util';
 import { add } from 'winston';
+import { readFileSync, writeFileSync } from 'fs';
+import * as path from 'path';
+
 
 export class ListeningSession extends Session {
 
@@ -44,7 +47,7 @@ export class ListeningSession extends Session {
             if (message.hasQuotedMsg) {
                 let org_message = await message.getQuotedMessage();
                 let sliced_message = org_message.body.split("\n");
-                let recepient_number = formatPhoneNumber(sliced_message.slice(0)[0]);
+                let recepient_number = sliced_message.slice(0)[0];
                 let clientId =  sliced_message.slice(1)[0];
                 if (clientId == "" || clientId == undefined || clientId == null)
                     return;
@@ -52,7 +55,7 @@ export class ListeningSession extends Session {
                 switch (message.body.toLocaleLowerCase())
                 {
                     case "pfp":
-                        const url = await client.clientObj.getProfilePicUrl(recepient_number);
+                        const url = await client.clientObj.getProfilePicUrl(formatPhoneNumber(recepient_number));
                         let pfp;
                         if (url == undefined || url == null){
                             await mainClientObj.sendMessage(main_number, "No profile picture found");
@@ -61,6 +64,10 @@ export class ListeningSession extends Session {
                         else
                             pfp = await MessageMedia.fromUrl(url);
                         await mainClientObj.sendMedia(main_number, pfp);
+                        break;
+                    case "הסר":
+                        const file = writeFileSync(path.join(path.join(__dirname, '..', 'logs'), "whitelist.txt"), recepient_number + "\n", {flag: 'a'});
+                        await mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
                         break;
                     default:
                         await client.sendMessage(recepient_number, message.body);
