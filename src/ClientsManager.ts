@@ -28,6 +28,14 @@ export class ClientsManager {
         this.groupsObj.push(group);
     }
 
+    public set_levels(clientsIds: string[], messagingLevel: number[])
+    {
+        for (let i = 0; i < clientsIds.length; i++)
+        {
+            this.clients[clientsIds[i]].messagingLevel = messagingLevel[i];
+        }
+    }
+
     public async add_group_id(group_id: string){
         let group = await this.get_group_by_id(group_id);
         if (group == null){
