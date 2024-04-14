@@ -171,6 +171,13 @@ export class ClientController {
 		return await chat.sendMessage(message);
 	}
 
+	public async sendGroupMessage(groupId: string, message: string){
+		const chatId = groupId;
+		const chat = await this.clientObj.getChatById(chatId);
+		this.messagingLevel++;
+		return await chat.sendMessage(message);
+	}
+
 	public async sendMedia(phoneNumber: string, media: MessageMedia){
 		const chatId = formatPhoneNumber(phoneNumber);
 		const chat = await this.clientObj.getChatById(chatId);
