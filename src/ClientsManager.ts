@@ -100,7 +100,7 @@ export class ClientsManager {
         return "Client not found";
     }
 
-    private get_client_by_id(client_id: string){
+    public get_client_by_id(client_id: string){
         for (let clientId in this.clients){
             let client = this.clients[clientId];
             if (client.getClientId() == client_id){
@@ -184,62 +184,6 @@ export class ClientsManager {
         await client.recievedQrCode(qr);
     }
 
-    private async create_exiting_group(group_id: string, clients: string[]){
-        let groupObj = await this.get_group_by_id(group_id);
-        if (groupObj == null){
-            ClientsManager.logManager.error(`Group ${group_id} not found`);
-            return;
-        }
-        let owner = this.get_client_by_id(groupObj.owner._serialized);
-        if (owner == null || typeof owner == "string"){
-            ClientsManager.logManager.error(`Owner of group ${group_id} not found`);
-            return;
-        }
-        let group = new Group(owner);
-        let title = groupObj.name;
-        let image = "";
-        let participants = groupObj.participants;
-        let description = groupObj.description;
-
-        await group.initialize(title, [],  clients, description, image, false, groupObj);
-        return group;
-    }
-
-    public async create_group(owner: string, title: string, participants: string[], admins: string[] = [], description: string = "", image: string = "", adminsOnly: boolean = false)
-    {
-        let owner_client = this.getClient(owner);
-        admins = this.get_client_numbers(admins);
-        let created_group = await owner_client.createGroup(title, participants, admins, description, image, adminsOnly);
-        if (created_group.get_group_obj() == undefined){
-            ClientsManager.logManager.error(`Error creating group ${title}: ${created_group}`);
-            return;
-        }
-        let groupObj = created_group.get_group_obj();
-        if (groupObj) {
-            this.add_group(groupObj);
-        }
-        ClientsManager.logManager.info(`Finished creating group ${title} with ${participants.length} participants`);
-        return created_group;
-    }
-
-    public async auto_respond(messages : string[], response : string)
-    {
-        let not_recieved = true;
-        let returned_message = "";
-        let client = this.clients[Object.keys(this.clients)[0]];
-        client.clientObj.on('message', async (message) => {
-            if (messages.includes(message.body)) {
-                not_recieved = false;
-                returned_message = response;
-                await client.sendMessage(message.from, response);
-            }
-        });
-        while (not_recieved)
-        {
-            await sleep(1);
-        }
-        return returned_message;
-    }
 
     public async recieve_message(main_client : string, phone_number: string)
     {

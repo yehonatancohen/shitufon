@@ -2,12 +2,13 @@ import { Session } from './Session';
 import { ClientsManager } from './ClientsManager';
 import WAWebJS, { MessageMedia } from 'whatsapp-web.js';
 import { formatPhoneNumber, idToPhoneNumber} from './Util';
-import { add } from 'winston';
+import { sleep } from './Util';
 
 export class ListeningSession extends Session {
 
     protected mainNumber: string;
     protected mainClient: string;
+    protected autoResponses: {[message: string]: string };
 
     constructor(cm: ClientsManager, clientIds: string[], mainNumber: string = "", mainClient: string = "") {
         super(cm);
@@ -15,6 +16,7 @@ export class ListeningSession extends Session {
         this.clientIds = clientIds;
         this.mainNumber = mainNumber;
         this.mainClient = mainClient;
+        this.autoResponses = {};
     }
 
     public async init() {
@@ -28,6 +30,25 @@ export class ListeningSession extends Session {
     private async redirect_message(clientId: string, message: string, phone_number: string) {
         let client = this.clients[clientId];
         await client.sendMessage(phone_number, message);
+    }
+
+    public async auto_respond(messages : string[], response : string)
+    {
+        let not_recieved = true;
+        let returned_message = "";
+        let client = this.clients[Object.keys(this.clients)[0]];
+        client.clientObj.on('message', async (message) => {
+            if (messages.includes(message.body)) {
+                not_recieved = false;
+                returned_message = response;
+                await client.sendMessage(message.from, response);
+            }
+        });
+        while (not_recieved)
+        {
+            await sleep(1);
+        }
+        return returned_message;
     }
 
     private async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
@@ -68,11 +89,15 @@ export class ListeningSession extends Session {
             }
             else
             {
+                let sender = await message.author;
                 switch (message.body.toLocaleLowerCase())
                 {
                     case "up":
                         await mainClientObj.sendMessage(main_number, "Up");
                         break;
+                    default:
+                        if (message.body.toLocaleLowerCase() in this.autoResponses)
+                            await client.sendMessage(sender_number, this.autoResponses[message.body.toLocaleLowerCase()])
                 }
             }
         }
