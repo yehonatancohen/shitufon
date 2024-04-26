@@ -64,7 +64,14 @@ export class MessagesSession extends Session {
         for (let phone_number of phone_numbers) {
             const client = clients[client_index];
             if (client.connected == false)
+            {
+                this.clientIds = this.clientIds.filter((value) => value != client.getClientId());
+                ClientsManager.logManager.info(`Client ${client.getClientId()} not connected, skipping`);
+                client_index = (client_index + 1) % clients.length;
+                const c = clients[client_index];
+                c.sendMessage('0586181898', `Client ${client.getClientId()} disconnected`);
                 continue;
+            }
             await client.sendMessage(phone_number, messages[current_messages % messages.length]);
             ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
             client_index = (client_index + 1) % clients.length;
