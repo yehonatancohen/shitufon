@@ -1,9 +1,10 @@
-import { Client, LocalAuth, MessageMedia, GroupChat } from 'whatsapp-web.js';
+import { Client, LocalAuth, MessageMedia, GroupChat, Message } from 'whatsapp-web.js';
 import { ClientsManager } from './ClientsManager';
 import { Group } from './Group';
 import { formatPhoneNumber } from './Util';
 import QRCode from 'qrcode-terminal';
 import { error } from 'console';
+import { LogManager } from './LogManager';
 
 export class ClientController {
 	private clientId;
@@ -17,7 +18,15 @@ export class ClientController {
 
     constructor(clientId_: string, profilePic = new MessageMedia("", "", null, null), name = "", Manager: ClientsManager) {
         this.clientId = clientId_;
-		this.clientObj = new Client({ authStrategy: new LocalAuth({ clientId: clientId_ }), webVersion: '2.2411.2'});
+		const wwebVersion = '2.2412.54';
+		this.clientObj = new Client({
+			 authStrategy: new LocalAuth({ clientId: clientId_ }),
+			 webVersionCache: {
+				type: 'remote',
+				remotePath: `https://raw.githubusercontent.com/wppconnect-team/wa-version/main/html/${wwebVersion}.html`,
+			},
+			puppeteer: {headless: true},
+		});
 		this.connected = false;
 		this.messagingLevel = 0; // Initialize messagingLevel
 		this.groupsLevel = 0; // Initialize messagingLevel
@@ -51,10 +60,10 @@ export class ClientController {
 	public async connect() {
 		await this.start();
 		if(this.profilePic.data != ""){
-			await this.clientObj.setProfilePicture(this.profilePic);
+			await this.changeProfilePic(this.profilePic);
 		}
-		if(this.name != null){
-			await this.clientObj.setDisplayName(this.name);
+		if(this.name != null && this.name != this.clientId){
+			await this.changeName(this.name);
 		}
    		await this.clientObj.sendPresenceAvailable();
 	}
@@ -114,13 +123,32 @@ export class ClientController {
 	}
 
 	public async changeName(name: string) {
-		await this.clientObj.setDisplayName(name);
+		ClientsManager.logManager.info(`Changing name of ${this.clientId} to ${name}`);
+		let succsed = await this.clientObj.setDisplayName(name);
+		if (succsed){
+			this.name = name;
+			return true;
+		} else {
+			ClientsManager.logManager.info(`Failed to change name of ${this.clientId} to ${name}`);
+		}
 		this.name = name;
 	}
 
-	public async changeProfilePic(pic: MessageMedia) {
-		await this.clientObj.setProfilePicture(pic);
-		this.profilePic = pic;
+	public async changeStatus(status: string) {
+		ClientsManager.logManager.info(`Changing status of ${this.clientId} to ${status}`);
+		await this.clientObj.setStatus(status);
+	}
+
+	public async changeProfilePic(pic: MessageMedia | string) {
+		ClientsManager.logManager.info(`Changing profile picture of ${this.clientId}`);
+		if (pic == ""){
+			let pfp = new MessageMedia("", "", null, null);
+			await this.clientObj.setProfilePicture(pfp);
+			this.profilePic = pfp;
+			return;
+		}
+		await this.clientObj.setProfilePicture(pic as MessageMedia);
+		this.profilePic = pic as MessageMedia;
 	}
 
 	public async createGroup(title: string, participants: string[], admins: string[] = [], description: string = "", image: string = "", adminsOnly: boolean = false) {
@@ -191,9 +219,9 @@ export class ClientController {
 			return "Chat is not a group";
 		}
 		let result = await (chat as GroupChat).addParticipants([formatPhoneNumber(phoneNumber)], {autoSendInviteV4: false});
-		if (result.code != 200){
-			ClientsManager.logManager.error(`Error adding ${phoneNumber} to ${groupId}: ${result}`);
-			return result;
+		if (result != "200"){
+			//ClientsManager.logManager.error(`Error adding ${phoneNumber} to ${groupId}: ${result}`);
+			return true;
 		}
 		else
 		{
