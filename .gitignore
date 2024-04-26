@@ -123,6 +123,7 @@ npm-debug.log*
 .wwebjs_cache
 /logs
 /excel
+/profile_pics
 
 # yarn v2
 yarn-debug.log*
