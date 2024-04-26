@@ -130,7 +130,7 @@ async function addParticipantsToGroup(client: Client, group: GroupChat, particip
         logs.getLogger().error("error adding participants");
         return result;
     }
-    for (const number in result) {
+    /*for (const number in result) {
         const { message, code } = result[number];
         if (code == 200) {
             logs.getLogger().info(`${client.info.wid._serialized} Added ${number} to group ${group.name}`);
@@ -150,7 +150,7 @@ async function addParticipantsToGroup(client: Client, group: GroupChat, particip
         else {
             logs.getLogger().error(`${client.info.wid._serialized} ${number} Unknown error`);
         }
-    }
+    }*/
     return result;
 }
 

@@ -32,6 +32,20 @@ export class Group {
         return this.groupObj as GroupChat;
     }
 
+    public getAdmins() {
+        if (typeof this.groupObj == "string") {
+            return [];
+        }
+        let groupObj = this.groupObj as GroupChat;
+        let admins : GroupParticipant[] = [];
+        for (let participant of groupObj.participants) {
+            if (participant.isAdmin) {
+                admins.push(participant);
+            }
+        }
+        return admins;
+    }
+
     public getGroupId() {
         return this.groupId;
     }
@@ -65,7 +79,7 @@ export class Group {
             return;
         }
         let groupObj = this.groupObj as GroupChat;
-        await groupObj.promoteParticipants([participantId]);
+        //await groupObj.promoteParticipants([participantId]);
     }
 
     private async updateCurrentParticipants() {
@@ -126,7 +140,6 @@ export class Group {
         }
         participantObj = new Participant(participantId);
         participantObj.addGroup(this);
-        await this.updateCurrentParticipants();
         return participantObj;
     }
 
@@ -241,6 +254,7 @@ export class Group {
         for (const phone_number of phone_numbers) {
             let participant_id = formatPhoneNumber(phone_number);
             let participant = await this.createParticipant(participant_id);
+            await this.updateCurrentParticipants();
             if (this.totalParticipants.includes(participant)) {
                 // Participant is already in the group
                 continue;
@@ -249,7 +263,7 @@ export class Group {
                 // Participant not found
                 continue;
             }
-            const client = this.clients[client_index];
+            const client = this.owner.Manager.clients[Object.keys(this.owner.Manager.clients)[client_index]];
             client_index = (client_index + 1) % this.clients.length;
             await client.add_participant(this.groupId ,phone_number);
             await this.updateCurrentParticipants();
@@ -260,7 +274,6 @@ export class Group {
             } else {
                 await sleep(sleepTime);
             }
-
         }
     }
 }
