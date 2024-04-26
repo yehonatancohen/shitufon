@@ -1,6 +1,6 @@
 import { Session } from './Session';
 import { ClientsManager } from './ClientsManager';
-import WAWebJS, { MessageMedia } from 'whatsapp-web.js';
+import WAWebJS, { Message, MessageMedia } from 'whatsapp-web.js';
 import { formatPhoneNumber, idToPhoneNumber} from './Util';
 import { sleep } from './Util';
 import { readFileSync, writeFileSync } from 'fs';
@@ -12,6 +12,7 @@ export class ListeningSession extends Session {
     protected mainNumber: string;
     protected mainClient: string;
     protected autoResponses: {[message: string]: string };
+    protected auto = false;
 
     constructor(cm: ClientsManager, clientIds: string[], mainNumber: string = "", mainClient: string = "") {
         super(cm);
@@ -30,9 +31,12 @@ export class ListeningSession extends Session {
         await this.add_message_listener();
     }
 
-    private async redirect_message(clientId: string, message: string, phone_number: string) {
+    private async redirect_message(clientId: string, message: string | Message, phone_number: string) {
         let client = this.clients[clientId];
-        await client.sendMessage(phone_number, message);
+        if (typeof message == "string")
+            await client.sendMessage(phone_number, message);
+        else
+            await message.forward(phone_number);
     }
 
     public async auto_respond(messages : string[], response : string)
@@ -99,6 +103,12 @@ export class ListeningSession extends Session {
                 let sender = await message.author;
                 switch (message.body.toLocaleLowerCase())
                 {
+                    case "auto":
+                        this.auto = true;
+                        break;
+                    case "stop":
+                        this.auto = false;
+                        break;
                     case "up":
                         await mainClientObj.sendMessage(main_number, "Up");
                         break;
