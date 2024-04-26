@@ -24,8 +24,9 @@ export class ClientsManager {
         return this.clients[clientId];
     }
 
-    public add_group(group: GroupChat){
-        this.groupsObj.push(group);
+    public add_group(group: Group){
+        this.groupsObj.push(group.get_group_obj() as GroupChat);
+        this.groups.push(group);
     }
 
     public set_levels(clientsIds: string[], messagingLevel: number[])
@@ -144,21 +145,22 @@ export class ClientsManager {
         return clients;
     }
 
-    private async get_group(group_id: string, clients: string[]){
+    public async get_group(group_id: string, clients: string[]){
         for (let group of this.groups){
             let g = group.get_group_obj();
             if (g != null && g.id._serialized == group_id){
                 return group;
             }
         }
-        await this.create_exiting_group(group_id, clients);
+        //await this.create_exiting_group(group_id, clients);
     }
 
     public get_clients(participant_ids: string[]){
         let clients = [];
         for (let participant_id of participant_ids){
-            let client = this.getClient(participant_id);
-            clients.push(client);
+            let client = this.get_client_by_number(participant_id);
+            if (client != "Client not found")
+                clients.push(client as ClientController);
         }
         return clients;
     }
@@ -224,9 +226,10 @@ export class ClientsManager {
         return returned_message;
     }
 
-    public async find_admin_of_group(group_id: string): Promise<string | ClientController>{
+    public async find_admin_of_group(group_id: string): Promise<string | ClientController[]>{
         let group;
-        for (let clientId in this.clients){
+        let admins = [];
+        for (let clientId in this.clients){ // Loop through all clients to check if any of them is in the group
             let client = this.clients[clientId];
             group = await client.get_group_by_id(group_id);
             if (group != null && typeof group != "string")
@@ -237,12 +240,13 @@ export class ClientsManager {
         }
         group = group as GroupChat;
         let client_ids = this.get_client_numbers();
-        let adminClient = group.participants.find((participant) => {
-            return participant.isAdmin && client_ids.includes(participant.id._serialized);
-        });
-
-        if (adminClient) {
-            return this.get_client_by_id(adminClient.id._serialized);
+        for (let participant of group.participants){
+            if (participant.isAdmin && client_ids.includes(participant.id._serialized)){
+                admins.push(this.get_client_by_number(participant.id._serialized) as ClientController);
+            }
+        }
+        if (admins.length > 0){
+            return admins;
         }
         return "Admin not found in group " + group_id;
     }
@@ -256,50 +260,5 @@ export class ClientsManager {
         return clients;
     }
 
-    public async add_participants_to_group(clientIds: string[], groupId: string, phone_numbers: string[], sleepTime: number = 20, every: number = 20, wait: number = 300) {
-        ClientsManager.logManager.info(`Starting task: Adding ${phone_numbers.length} participants to group ${groupId}`);
-        let admin = await this.find_admin_of_group(groupId);
-        if (typeof admin == "string"){
-            ClientsManager.logManager.error(`Error adding participants to group ${groupId}: ${admin}`);
-            return;
-        }
-        admin = admin as ClientController;
-        let group = await this.get_group(groupId, clientIds);
-        if (group == null || typeof group == "string"){
-            ClientsManager.logManager.error(`Error adding participants to group ${groupId}: ${group}`);
-            return;
-        }
-        let current_added = 0
-        if(clientIds.length == 1){
-            for (let phone_number of phone_numbers) {
-                let result = await admin.add_participant(groupId, phone_number);
-                if (!result){
-                    ClientsManager.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
-                }
-                await sleep(sleepTime);
-                current_added++;
-                if (current_added % every == 0) {
-                    ClientsManager.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
-                    await sleep(wait);
-                }
-            }
-            return;
-        }
-
-        let client_index = 0;
-        for (let phone_number of phone_numbers) {
-            const client = this.clients[client_index];
-            client_index = (client_index + 1) % clientIds.length;
-            let result = await client.add_participant(groupId, phone_number);
-            if (!result){
-                ClientsManager.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
-            }
-            await sleep(sleepTime);
-            current_added++;
-            if (current_added % every == 0) {
-                ClientsManager.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
-                await sleep(wait);
-            }
-        }
-    }
+    
 }
