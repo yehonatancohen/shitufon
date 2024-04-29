@@ -1,4 +1,38 @@
 import { Client, GroupChat } from 'whatsapp-web.js';
+import fs from 'fs';
+import path from 'path';
+
+export function findRecentTxtFiles (directory: string, amount: number): string[] {
+    try {
+        // Read the directory content
+        const allFiles = fs.readdirSync(directory)
+            .filter(file => file.endsWith('.txt'))  // Filter for .txt files
+            .map(file => ({
+                name: file,
+                time: fs.statSync(path.join(directory, file)).mtime.getTime()
+            }))
+            .sort((a, b) => b.time - a.time)  // Sort files by modification time, descending
+
+        // Array to hold valid file names
+        const validFiles: string[] = [];
+
+        // Check each file for more than 30 lines
+        for (let i = 0; i < allFiles.length; i++){
+            const file = allFiles[i];
+            const lines = fs.readFileSync(path.join(directory, file.name), { encoding: 'utf-8' })
+                .split('\n');
+            if (lines.length > 30) {
+                validFiles.push(file.name);
+                if (validFiles.length >= amount) return validFiles;
+            }
+        }
+
+        return validFiles;
+    } catch (error) {
+        console.error('Error accessing files:', error);
+        return [];
+    }
+};
 
 export async function sleep(seconds: number) {
     return new Promise(resolve => setTimeout(resolve, seconds * 1000));
