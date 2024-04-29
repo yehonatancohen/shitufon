@@ -30,7 +30,7 @@ export class WarmingSession extends Session {
     }
 
     public async init() {
-        await this.initClients(this.clientIds);
+        this.initClients(this.clientIds);
     }
 
     public async startSession() {
@@ -38,11 +38,11 @@ export class WarmingSession extends Session {
     }
 
     private async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
-        let client = this.clients[clientId];
+        let client = this.cm.getClient(clientId);
         const chatType = await message.getChat() 
         if (message.type != WAWebJS.MessageTypes.TEXT || message.body == undefined || message.body == null)
             return;
-        let mainClientObj = this.clients[main_client];
+        let mainClientObj = this.cm.getClient(main_client);
         main_number = main_number == "" ? client.get_phone_number() : main_number;
         main_number = formatPhoneNumber(main_number);
         if (sender_number == main_number)
@@ -53,7 +53,7 @@ export class WarmingSession extends Session {
                     if ((await message.getChat()).isGroup && this.groupId == "")
                     {
                         this.groupId = (await message.getChat()).id._serialized;
-                        this.clients[clientId].sendGroupMessage(this.groupId, "Group set");
+                        this.cm.getClient(clientId).sendGroupMessage(this.groupId, "Group set");
                     }
                     break;
                 case "up":
@@ -77,7 +77,7 @@ export class WarmingSession extends Session {
                 let sleep_time = Math.random() * (180 - 35) + 35;
                 ClientsManager.logManager.info(`Client ${this.clientIds[currentTurn]} sleeping for ${sleep_time} seconds`);
                 await sleep(sleep_time);
-                this.clients[this.clientIds[currentTurn]].sendGroupMessage(this.groupId, this.sentences[Math.floor(Math.random() * this.sentences.length)]);
+                this.cm.getClient(clientId).sendGroupMessage(this.groupId, this.sentences[Math.floor(Math.random() * this.sentences.length)]);
                 ClientsManager.logManager.info(`Sent message to ${this.groupId}`);
             }
         }
@@ -97,11 +97,9 @@ export class WarmingSession extends Session {
     }
 
     private async add_message_listener() {
-        let client = this.cm.clients[this.clientIds[0], this.clientIds[1]];
-        ClientsManager.logManager.info(`Adding message listener for ${client.getClientId()}`);
-        for (let clientId of this.clientIds)
-        {
+        for (let clientId of this.clientIds){
             let client = this.cm.clients[clientId];
+            ClientsManager.logManager.info(`Adding message listener for ${client.getClientId()}`);
             client.clientObj.on('message', async message => {
                 let author = message.author ? message.author : message.from;
                 await this.message_callback(clientId, message, author, this.mainNumber);
