@@ -1,8 +1,8 @@
 import { Session } from './Session';
-import { ClientsManager } from './ClientsManager';
+import { ClientsManager } from '../ClientsManager';
 import WAWebJS, { GroupChat, MessageMedia } from 'whatsapp-web.js';
-import { formatPhoneNumber, idToPhoneNumber} from './Util';
-import { sleep } from './Util';
+import { formatPhoneNumber, idToPhoneNumber} from '../Util';
+import { sleep } from '../Util';
 import * as fs from 'fs';
 import { group } from 'console';
 
@@ -34,6 +34,7 @@ export class WarmingSession extends Session {
     }
 
     public async startSession() {
+        super.startSession();
         await this.add_message_listener();
     }
 

@@ -1,8 +1,9 @@
-import { Session } from './Session';
-import { ClientsManager } from './ClientsManager';
+import { Session, SessionStatus } from './Session';
+import { ClientsManager } from '../ClientsManager';
+import { ClientController } from '../ClientController';
 import WAWebJS, { Message, MessageMedia } from 'whatsapp-web.js';
-import { formatPhoneNumber, idToPhoneNumber} from './Util';
-import { sleep } from './Util';
+import { formatPhoneNumber, idToPhoneNumber} from '../Util';
+import { sleep } from '../Util';
 import { readFileSync, writeFileSync } from 'fs';
 import * as path from 'path';
 
@@ -11,6 +12,7 @@ export class ListeningSession extends Session {
 
     protected mainNumber: string;
     protected mainClient: string;
+    protected mainClientObj: ClientController;
     protected autoResponses: {[message: string]: string };
     protected auto = false;
 
@@ -20,6 +22,7 @@ export class ListeningSession extends Session {
         this.clientIds = clientIds;
         this.mainNumber = mainNumber;
         this.mainClient = mainClient;
+        this.mainClientObj = this.clients[mainClient];
         this.autoResponses = {};
     }
 
@@ -28,6 +31,7 @@ export class ListeningSession extends Session {
     }
 
     public async startSession() {
+        super.startSession();
         await this.add_message_listener();
     }
 
@@ -39,23 +43,61 @@ export class ListeningSession extends Session {
             await message.forward(phone_number);
     }
 
-    public async auto_respond(messages : string[], response : string)
-    {
-        let not_recieved = true;
-        let returned_message = "";
-        let client = this.clients[Object.keys(this.clients)[0]];
-        client.clientObj.on('message', async (message) => {
-            if (messages.includes(message.body)) {
-                not_recieved = false;
-                returned_message = response;
-                await client.sendMessage(message.from, response);
+    private async admin_command(clientId: string, message: WAWebJS.Message ,org_message: Promise<Message>, main_number: string, sender_number: string) {
+        let client = this.clients[clientId];
+        if (org_message != undefined) {
+            // Messsage is a reply
+            let _org_message = await org_message;
+            let sliced_message = _org_message.body.split("\n");
+            let recepient_number = sliced_message.slice(0)[0];
+            let clientId =  sliced_message.slice(1)[0];
+            if (clientId == "" || clientId == undefined || clientId == null)
+                return;
+            let client = this.cm.getClient(clientId);
+            switch (message.body.toLocaleLowerCase())
+            {
+                case "pfp":
+                    const url = await client.clientObj.getProfilePicUrl(formatPhoneNumber(recepient_number));
+                    let pfp;
+                    if (url == undefined || url == null){
+                        await this.mainClientObj.sendMessage(main_number, "No profile picture found");
+                        break;
+                    }
+                    else
+                        pfp = await MessageMedia.fromUrl(url);
+                    await this.mainClientObj.sendMedia(main_number, pfp);
+                    break;
+                case "הסר":
+                    const file = writeFileSync(path.join(path.join(__dirname, '..', 'logs'), "whitelist.txt"), recepient_number + "\n", {flag: 'a'});
+                    await this.mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
+                    break;
+                default:
+                    await client.sendMessage(recepient_number, message.body);
             }
-        });
-        while (not_recieved)
-        {
-            await sleep(1);
         }
-        return returned_message;
+        else
+        {
+            // Message is not a reply
+            let sender = await message.author;
+            switch (message.body.toLocaleLowerCase())
+            {
+                case "pause":
+                    this.status = SessionStatus.PAUSED;
+                    break;
+                case "resume":
+                    this.status = SessionStatus.RESUMED;
+                    break;
+                case "stop":
+                    this.status = SessionStatus.STOPPED;
+                    break;
+                case "up":
+                    await this.mainClientObj.sendMessage(main_number, "Up");
+                    break;
+                default:
+                    if (message.body.toLocaleLowerCase() in this.autoResponses)
+                        await client.sendMessage(sender_number, this.autoResponses[message.body.toLocaleLowerCase()])
+            }
+        }
     }
 
     private async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
@@ -65,10 +107,15 @@ export class ListeningSession extends Session {
             return;
         let main_client_obj = main_client == "" ? clientId : main_client;
         let mainClientObj = this.clients[main_client];
+        if (mainClientObj.connected == false) {
+            this.mainClient = this.cm.get_connected_client_ids()[0];
+            mainClientObj = this.clients[main_client];
+        }
         main_number = main_number == "" ? client.get_phone_number() : main_number;
         main_number = formatPhoneNumber(main_number);
         if (sender_number == main_number)
         {
+            this.admin_command(clientId, message, message.getQuotedMessage(), main_number, sender_number);
             if (message.hasQuotedMsg) {
                 let org_message = await message.getQuotedMessage();
                 let sliced_message = org_message.body.split("\n");

@@ -1,8 +1,8 @@
-import { Session } from './Session';
-import { ClientController } from './ClientController';
-import { ClientsManager } from './ClientsManager';
-import { sleep } from './Util';
-import { MessageData } from './MessageData';
+import { Session, SessionStatus } from './Session';
+import { ClientController } from '../ClientController';
+import { ClientsManager } from '../ClientsManager';
+import { sleep } from '../Util';
+import { MessageData } from '../MessageData';
 
 export class MessagesSession extends Session {
     protected toSendMessage: MessageData[];
@@ -32,28 +32,12 @@ export class MessagesSession extends Session {
     }
 
     public async startSession() {
+        super.startSession();
         await this.send_messages(this.clientIds, this.phoneNumbers, this.messageBody);
     }
     
     private async send_messages(clientIds: string[], phone_numbers: string[], messages: string[]) {
-        let current_messages = 0
-        if (clientIds.length == 1) {
-            const client = this.cm.getClient(clientIds[0]);
-            for (let phone_number of phone_numbers) {
-                await client.sendMessage(phone_number, messages[current_messages % messages.length]);
-                ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);
-                await sleep(this.sleepTime);
-                current_messages++;
-                if (current_messages % this.every == 0) {
-                    ClientsManager.logManager.info(`Sent ${current_messages} messages, sleeping for ${this.wait} seconds`);
-                    await sleep(this.wait);
-                }
-            }
-            this.sentMessages = this.toSendMessage;
-            this.toSendMessage = [];
-            return;
-        }
-        
+        let current_messages = 0        
         const clients = [];
         for (let clientId of clientIds){
             let client = this.cm.getClient(clientId);
@@ -71,6 +55,21 @@ export class MessagesSession extends Session {
                 const c = clients[client_index];
                 c.sendMessage('0586181898', `Client ${client.getClientId()} disconnected`);
                 continue;
+            }
+            switch (this.status) {
+                case SessionStatus.PAUSED:
+                    ClientsManager.logManager.info(`Pausing session ${this.sessionId}`);
+                    await sleep(5);
+                    continue;
+                case SessionStatus.STOPPED:
+                    ClientsManager.logManager.info(`Terminating session ${this.sessionId}`);
+                    break;
+                case SessionStatus.RESUMED:
+                    ClientsManager.logManager.info(`Resuming session ${this.sessionId}`);
+                    break;
+            }
+            if (this.status == SessionStatus.STOPPED){
+                break;
             }
             await client.sendMessage(phone_number, messages[current_messages % messages.length]);
             ClientsManager.logManager.info(`Sent message to ${phone_number} from ${client.getClientId()}`);

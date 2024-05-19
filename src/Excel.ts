@@ -94,10 +94,12 @@ function extractPhoneNumbers(fileNames: string[], exclude: string[]): any[]{
     let excludeNumbers : any[];
     if (exclude.length > 0){
         excludeNumbers = processFile(excludeContent);
-        let totalExcluded = excludeNumbers.length;
-        let totalLeft = totalLoaded - totalExcluded;
-        ClientsManager.logManager.info(`loaded ${totalLoaded} numbers, excluded ${totalExcluded} of them, ${totalLeft} numbers total`);
-        fileNumbers = fileNumbers.filter( ( el ) => !excludeNumbers.includes( el ) );
+        const initialLength = fileNumbers.length;
+        fileNumbers = fileNumbers.filter((el) => !excludeNumbers.includes(el));
+        const filteredLength = fileNumbers.length;
+        const numberOfFilteredOut = initialLength - filteredLength;
+        const totalLeft = initialLength - numberOfFilteredOut;
+        ClientsManager.logManager.info(`loaded ${totalLoaded} numbers, excluded ${numberOfFilteredOut} of them, ${totalLeft} numbers total`);
     }
     else
     {

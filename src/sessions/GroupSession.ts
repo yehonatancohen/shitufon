@@ -1,11 +1,10 @@
-import { Session } from "./Session";
-import { ClientsManager } from "./ClientsManager";
-import { Group } from "./Group";
-import { Participant } from "./Participant";
-import { ClientController } from "./ClientController";
-import { sleep } from './Util';
-import { group } from "console";
-import { Client } from "whatsapp-web.js";
+import { Session, SessionStatus } from "./Session";
+import { ClientsManager } from "../ClientsManager";
+import { Group } from "../Group";
+import { Participant } from "../Participant";
+import { ClientController } from "../ClientController";
+import { sleep } from '../Util';
+import { Status } from "whatsapp-web.js";
 
 export class GroupSession extends Session
 {
@@ -47,6 +46,8 @@ export class GroupSession extends Session
     }
 
     public async startSession() {
+        super.startSession();
+        ClientsManager.logManager.info(`Starting session ${this.sessionId}`);
         if (this.groupCreated != undefined){
             this.groupCreated = this.groupCreated as Group;
         } else {
@@ -110,25 +111,25 @@ export class GroupSession extends Session
             ClientsManager.logManager.error(`Error adding participants to group ${groupId}: ${group}`);
             return;
         }
-        let current_added = 0
-        if(clientIds.length == 1){
-            for (let phone_number of phone_numbers) {
-                let result = await admin.add_participant(groupId, phone_number);
-                if (!result){
-                    ClientsManager.logManager.error(`Error adding ${phone_number} to ${groupId}: ${result}`);
-                }
-                await sleep(sleepTime);
-                current_added++;
-                if (current_added % every == 0) {
-                    ClientsManager.logManager.info(`Added ${current_added} participants to group ${groupId}, waiting for ${wait} seconds`);
-                    await sleep(wait);
-                }
-            }
-            return;
-        }
-
+        let current_added = 0;
         let client_index = 0;
+
         for (let phone_number of phone_numbers) {
+            switch (this.status) {
+                case SessionStatus.PAUSED:
+                    ClientsManager.logManager.info(`Pausing session ${this.sessionId}`);
+                    await sleep(5);
+                    continue;
+                case SessionStatus.STOPPED:
+                    ClientsManager.logManager.info(`Terminating session ${this.sessionId}`);
+                    break;
+                case SessionStatus.RESUMED:
+                    ClientsManager.logManager.info(`Resuming session ${this.sessionId}`);
+                    break;
+            }
+            if (this.status == SessionStatus.STOPPED){
+                break;
+            }
             const client = this.clients[client_index];
             client_index = (client_index + 1) % clientIds.length;
             let result = await client.add_participant(groupId, phone_number);

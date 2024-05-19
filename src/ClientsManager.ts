@@ -99,6 +99,16 @@ export class ClientsManager {
         return numbers;
     }
 
+    public get_connected_client_ids() {
+        let numbers = [];
+        for (let clientId in this.clients){
+            let client = this.clients[clientId];
+            if (client.connected)
+                numbers.push(client.getClientId());
+        }
+        return numbers;
+    }
+
     private get_client_by_number(phone_number: string){
         for (let clientId in this.clients){
             let client = this.clients[clientId];
