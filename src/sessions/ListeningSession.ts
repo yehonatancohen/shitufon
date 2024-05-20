@@ -1,4 +1,5 @@
 import { Session, SessionStatus } from './Session';
+import { SessionManager } from './SessionManager';
 import { ClientsManager } from '../ClientsManager';
 import { ClientController } from '../ClientController';
 import WAWebJS, { Message, MessageMedia } from 'whatsapp-web.js';
@@ -16,8 +17,8 @@ export class ListeningSession extends Session {
     protected autoResponses: {[message: string]: string };
     protected auto = false;
 
-    constructor(cm: ClientsManager, clientIds: string[], mainNumber: string = "", mainClient: string = "") {
-        super(cm);
+    constructor(cm: ClientsManager, sm: SessionManager, clientIds: string[], mainNumber: string = "", mainClient: string = "") {
+        super(cm, sm);
         this.sessionType = "Listening";
         this.clientIds = clientIds;
         this.mainNumber = mainNumber;

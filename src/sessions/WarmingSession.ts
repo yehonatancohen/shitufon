@@ -1,4 +1,5 @@
 import { Session } from './Session';
+import { SessionManager } from './SessionManager';
 import { ClientsManager } from '../ClientsManager';
 import WAWebJS, { GroupChat, MessageMedia } from 'whatsapp-web.js';
 import { formatPhoneNumber, idToPhoneNumber} from '../Util';
@@ -13,8 +14,8 @@ export class WarmingSession extends Session {
     protected sentences: string[];
     protected locker: boolean = false;
 
-    constructor(cm: ClientsManager, clientIds: string[], mainNumber: string = "") {
-        super(cm);
+    constructor(cm: ClientsManager, sm: SessionManager, clientIds: string[], mainNumber: string = "") {
+        super(cm, sm);
         this.sessionType = "Warming";
         this.clientIds = clientIds;
         this.mainNumber = mainNumber;

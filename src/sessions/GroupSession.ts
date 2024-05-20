@@ -5,6 +5,7 @@ import { Participant } from "../Participant";
 import { ClientController } from "../ClientController";
 import { sleep } from '../Util';
 import { Status } from "whatsapp-web.js";
+import { SessionManager } from "./SessionManager";
 
 export class GroupSession extends Session
 {
@@ -15,9 +16,9 @@ export class GroupSession extends Session
     protected ownerClient: ClientController | string;
     protected adminClients: ClientController[];
 
-    constructor(cm: ClientsManager, clientIds: string[], owner_id: string, group_id: string | undefined, participants: string[])
+    constructor(cm: ClientsManager, sm: SessionManager, clientIds: string[], participants: string[], owner_id: string, group_id: string | undefined)
     {
-        super(cm);
+        super(cm, sm);
         this.ownerClient = owner_id; 
         this.clientIds = clientIds;
         this.participantsAdded = [];

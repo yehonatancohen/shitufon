@@ -1,4 +1,5 @@
 import { Session, SessionStatus } from './Session';
+import { SessionManager } from './SessionManager';
 import { ClientController } from '../ClientController';
 import { ClientsManager } from '../ClientsManager';
 import { sleep } from '../Util';
@@ -13,8 +14,8 @@ export class MessagesSession extends Session {
     private every: number;
     private wait: number;
 
-    constructor(cm: ClientsManager, clientIds: string[], phoneNumbers: string[], messageBody: string[], sleepTime: number = 5, every: number = 20, wait: number = 60) {
-        super(cm);
+    constructor(cm: ClientsManager, sm: SessionManager, clientIds: string[], phoneNumbers: string[], messageBody: string[], sleepTime: number = 5, every: number = 20, wait: number = 60) {
+        super(cm, sm);
         this.sessionType = "Messages";
         this.sessionId = this.generateId();
         this.toSendMessage = [];

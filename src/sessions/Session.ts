@@ -1,3 +1,4 @@
+import { generate } from 'qrcode-terminal';
 import { ClientController } from '../ClientController';
 import { ClientsManager } from '../ClientsManager';
 import { SessionManager } from './SessionManager';
@@ -10,7 +11,7 @@ export enum SessionStatus {
 }
 
 export class Session {
-    protected sessionId: number;
+    protected sessionId: string;
     protected cm: ClientsManager;
     protected clients: { [clientId: string]: ClientController };
     protected clientIds: string[];
@@ -26,7 +27,12 @@ export class Session {
         this.sessionId = this.generateId();
         this.clients = {};
         this.clientIds = [];
+        this.generateId()
         this.status = SessionStatus.STOPPED;
+    }
+
+    public getId(){
+        return this.sessionId;
     }
 
     protected generateId()
@@ -35,10 +41,15 @@ export class Session {
         {
             const err = new Error("Session id already exits");
             this.handleError(err);
-            return 0;
+            return this.sessionId;
         }
-        // generate id
-        return 1;
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        let id = '';
+        const length = 8;
+        for (let i = 0; i < length; i++) {
+            id += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return id;
     }
 
     public async startSession()
@@ -48,7 +59,7 @@ export class Session {
         ClientsManager.logManager.info(`Starting session ${this.sessionId} of type ${this.sessionType}`);
     }
 
-    public async stopSession()
+    public async stop()
     {
         // stop session
         this.status = SessionStatus.STOPPED;
