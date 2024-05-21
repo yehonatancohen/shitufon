@@ -44,11 +44,11 @@ export class ListeningSession extends Session {
             await message.forward(phone_number);
     }
 
-    private async admin_command(clientId: string, message: WAWebJS.Message ,org_message: Promise<Message>, main_number: string, sender_number: string) {
+    private async admin_command(clientId: string, message: WAWebJS.Message, main_number: string, sender_number: string) {
         let client = this.clients[clientId];
-        if (org_message != undefined) {
+        if (message.hasQuotedMsg) {
             // Messsage is a reply
-            let _org_message = await org_message;
+            let _org_message = await message.getQuotedMessage();
             let sliced_message = _org_message.body.split("\n");
             let recepient_number = sliced_message.slice(0)[0];
             let clientId =  sliced_message.slice(1)[0];
@@ -73,7 +73,12 @@ export class ListeningSession extends Session {
                     await this.mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
                     break;
                 default:
-                    await client.sendMessage(recepient_number, message.body);
+                    if (message.type == WAWebJS.MessageTypes.IMAGE || message.type == WAWebJS.MessageTypes.VIDEO || message.type == WAWebJS.MessageTypes.AUDIO || message.type == WAWebJS.MessageTypes.DOCUMENT || message.type == WAWebJS.MessageTypes.STICKER) {
+                        let media = await message.downloadMedia();
+                        await client.sendMedia(recepient_number, media);
+                    } else {
+                        await client.sendMessage(recepient_number, message.body);
+                    }
             }
         }
         else
@@ -104,8 +109,6 @@ export class ListeningSession extends Session {
     private async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
         let client = this.clients[clientId];
         const chatType = await message.getChat()
-        if (message.type != WAWebJS.MessageTypes.TEXT || message.body == undefined || message.body == null || chatType.isGroup == true)
-            return;
         let main_client_obj = main_client == "" ? clientId : main_client;
         let mainClientObj = this.clients[main_client];
         if (mainClientObj.connected == false) {
@@ -116,61 +119,22 @@ export class ListeningSession extends Session {
         main_number = formatPhoneNumber(main_number);
         if (sender_number == main_number)
         {
-            this.admin_command(clientId, message, message.getQuotedMessage(), main_number, sender_number);
-            if (message.hasQuotedMsg) {
-                let org_message = await message.getQuotedMessage();
-                let sliced_message = org_message.body.split("\n");
-                let recepient_number = sliced_message.slice(0)[0];
-                let clientId =  sliced_message.slice(1)[0];
-                if (clientId == "" || clientId == undefined || clientId == null)
-                    return;
-                let client = this.cm.getClient(clientId);
-                switch (message.body.toLocaleLowerCase())
-                {
-                    case "pfp":
-                        const url = await client.clientObj.getProfilePicUrl(formatPhoneNumber(recepient_number));
-                        let pfp;
-                        if (url == undefined || url == null){
-                            await mainClientObj.sendMessage(main_number, "No profile picture found");
-                            break;
-                        }
-                        else
-                            pfp = await MessageMedia.fromUrl(url);
-                        await mainClientObj.sendMedia(main_number, pfp);
-                        break;
-                    case "הסר":
-                        const file = writeFileSync(path.join(path.join(__dirname, '..', 'logs'), "whitelist.txt"), recepient_number + "\n", {flag: 'a'});
-                        await mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
-                        break;
-                    default:
-                        await client.sendMessage(recepient_number, message.body);
-                }
-            }
-            else
-            {
-                let sender = await message.author;
-                switch (message.body.toLocaleLowerCase())
-                {
-                    case "auto":
-                        this.auto = true;
-                        break;
-                    case "stop":
-                        this.auto = false;
-                        break;
-                    case "up":
-                        await mainClientObj.sendMessage(main_number, "Up");
-                        break;
-                    default:
-                        if (message.body.toLocaleLowerCase() in this.autoResponses)
-                            await client.sendMessage(sender_number, this.autoResponses[message.body.toLocaleLowerCase()])
-                }
-            }
+            this.admin_command(clientId, message, main_number, sender_number);
         }
         else
         {
-            let edited_message =  idToPhoneNumber(sender_number) + "\n" + clientId + "\n" + message.body;
-            this.redirect_message(main_client, edited_message, main_number);
-            ClientsManager.logManager.info(`Received message from ${sender_number} to ${client.getClientId()}: ${message.body}`);
+            if (message.type == WAWebJS.MessageTypes.IMAGE || message.type == WAWebJS.MessageTypes.VIDEO || message.type == WAWebJS.MessageTypes.AUDIO || message.type == WAWebJS.MessageTypes.DOCUMENT || message.type == WAWebJS.MessageTypes.STICKER) {
+                let media = await message.downloadMedia();
+                let media_type = message.type == WAWebJS.MessageTypes.IMAGE ? "image" : message.type == WAWebJS.MessageTypes.VIDEO ? "video" : message.type == WAWebJS.MessageTypes.AUDIO ? "audio" : message.type == WAWebJS.MessageTypes.DOCUMENT ? "document" : message.type == WAWebJS.MessageTypes.STICKER ? "sticker" : "unknown";
+                let edited_message = idToPhoneNumber(sender_number) + "\n" + clientId + "\n" + `Received ${media_type}`;
+                this.redirect_message(main_client, edited_message, main_number);
+                await mainClientObj.sendMedia(main_number, media);
+                ClientsManager.logManager.info(`Received ${media_type} from ${sender_number} to ${client.getClientId()}`);
+            } else {
+                let edited_message =  idToPhoneNumber(sender_number) + "\n" + clientId + "\n" + message.body;
+                this.redirect_message(main_client, edited_message, main_number);
+                ClientsManager.logManager.info(`Received message from ${sender_number} to ${client.getClientId()}: ${message.body}`);
+            }
         }
 
     }
