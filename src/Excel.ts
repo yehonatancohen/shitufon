@@ -1,6 +1,6 @@
 import * as XLSX from 'xlsx';
 import * as fs from 'fs';
-import * as utils from './Util';
+import * as path from 'path';
 import { ClientsManager } from './ClientsManager';
 
 function convertPhoneNumber(number : string) {
@@ -34,6 +34,17 @@ function parseExcelFile(filePath: string): any[] {
     return parsedData;
 }
 
+function findSessionFiles(sessionIds: string[]) {
+    let logFiles: string[] = [];
+    const logFolderPath = path.join(__dirname, '..', 'logs');
+    const files = fs.readdirSync(logFolderPath);
+    files.forEach(file => {
+        if (sessionIds.includes(file.split('_')[1].split('.')[0]))
+            logFiles.push(file);
+    });
+    return logFiles;
+}
+
 function processFile(allFilesContent: string[]): any[]{
     let allLines = new Set(); // Use a set to automatically remove duplicates
 
@@ -56,9 +67,16 @@ function processFile(allFilesContent: string[]): any[]{
     return combinedContent;
 }
 
-function extractPhoneNumbers(fileNames: string[], exclude: string[]): any[]{
+function getFilesFromFolder(folderName: string) {
+    const files = fs.readdirSync(folderName);
+    const filePaths = files.map(file => path.join(folderName, file));
+    return filePaths;
+}
+
+function extractPhoneNumbers(fileNames: string[], exclude: string[], sessionIds: string[] = []): any[]{
     let allFilesContent : any[] = [];
     let excludeContent : any[] = [];
+    exclude.push(...findSessionFiles(sessionIds));
     for (let i = 0; i < fileNames.length; i++){
         if (fileNames[i].includes('.xlsx') || fileNames[i].includes('.xls')){
             let data = parseExcelFile(fileNames[i]);
@@ -92,14 +110,15 @@ function extractPhoneNumbers(fileNames: string[], exclude: string[]): any[]{
     let fileNumbers = processFile(allFilesContent);
     let totalLoaded = fileNumbers.length;
     let excludeNumbers : any[];
+    const initialLength = fileNumbers.length;
+    let filteredLength = 0
     if (exclude.length > 0){
         excludeNumbers = processFile(excludeContent);
-        const initialLength = fileNumbers.length;
         fileNumbers = fileNumbers.filter((el) => !excludeNumbers.includes(el));
-        const filteredLength = fileNumbers.length;
+        filteredLength += fileNumbers.length;
         const numberOfFilteredOut = initialLength - filteredLength;
         const totalLeft = initialLength - numberOfFilteredOut;
-        ClientsManager.logManager.info(`loaded ${totalLoaded} numbers, excluded ${numberOfFilteredOut} of them, ${totalLeft} numbers total`);
+        ClientsManager.logManager.info(`loaded ${totalLoaded} numbers, excluded ${numberOfFilteredOut} of them, ${totalLeft} numbers total`);    
     }
     else
     {
@@ -117,4 +136,4 @@ async function run() {
     console.log('Parsed Excel data:', jsonData);
 }
 
-export { extractPhoneNumbers };
+export { extractPhoneNumbers, getFilesFromFolder };
