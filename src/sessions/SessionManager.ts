@@ -7,6 +7,7 @@ import { Session } from "./Session";
 
 export class SessionManager
 {
+    protected managerNumber: string;
     protected clientManager: ClientsManager;
     protected clientsIds: string[] = [];
     protected sessions: Session[] = [];
@@ -17,9 +18,14 @@ export class SessionManager
         "Warming": WarmingSession
     };
     
-    constructor(cm: ClientsManager, clientIds: string[] = [])
+    constructor(cm: ClientsManager, managerNumber: string, clientIds: string[] = [])
     {
         this.clientManager = cm;
+        this.managerNumber = managerNumber;
+    }
+
+    public getStatus() {
+
     }
 
     public getSessions() {
@@ -34,6 +40,7 @@ export class SessionManager
         let session = this.getSession(sessionId);
         if (session) {
             session.pause();
+            this.clientManager.clients[this.clientsIds[0]].sendMessage(this.managerNumber, `Session ${sessionId} paused`);
         }
     }
 
@@ -41,6 +48,7 @@ export class SessionManager
         let session = this.getSession(sessionId);
         if (session) {
             session.resume();
+            this.clientManager.clients[this.clientsIds[0]].sendMessage(this.managerNumber, `Session ${sessionId} resumed`);
         }
     }
 
@@ -48,7 +56,16 @@ export class SessionManager
         let session = this.getSession(sessionId);
         if (session) {
             session.stop();
+            this.clientManager.clients[this.clientsIds[0]].sendMessage(this.managerNumber, `Session ${sessionId} stopped`);
         }
+    }
+
+    public getSessionById(sessionId: string) {
+        return this.sessions.find(session => session.getId() === sessionId);
+    }
+
+    public async informUser() {
+
     }
 
     public async createSession(sessionType: string, clientIds: string[], participants: string[] = [], ...args: any[])

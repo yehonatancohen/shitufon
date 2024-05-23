@@ -39,8 +39,11 @@ function findSessionFiles(sessionIds: string[]) {
     const logFolderPath = path.join(__dirname, '..', 'logs');
     const files = fs.readdirSync(logFolderPath);
     files.forEach(file => {
-        if (sessionIds.includes(file.split('_')[1].split('.')[0]))
-            logFiles.push(file);
+        const content = fs.readFileSync(path.join(logFolderPath, file), 'utf8');
+        const containsSessionId = sessionIds.some(sessionId => content.includes(sessionId));
+        if (containsSessionId) {
+            logFiles.push(path.join('logs', file));
+        }
     });
     return logFiles;
 }

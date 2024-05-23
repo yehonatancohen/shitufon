@@ -22,7 +22,7 @@ export function findRecentTxtFiles (directory: string, amount: number): string[]
             const lines = fs.readFileSync(path.join(directory, file.name), { encoding: 'utf-8' })
                 .split('\n');
             if (lines.length > 30) {
-                validFiles.push(file.name);
+                validFiles.push(path.join(directory, file.name));
                 if (validFiles.length >= amount) return validFiles;
             }
         }

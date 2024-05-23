@@ -44,7 +44,7 @@ export class ListeningSession extends Session {
             await message.forward(phone_number);
     }
 
-    private async admin_command(clientId: string, message: WAWebJS.Message, main_number: string, sender_number: string) {
+    private async admin_command(mainClientObj: ClientController, clientId: string, message: WAWebJS.Message, main_number: string, sender_number: string) {
         let client = this.clients[clientId];
         if (message.hasQuotedMsg) {
             // Messsage is a reply
@@ -61,16 +61,16 @@ export class ListeningSession extends Session {
                     const url = await client.clientObj.getProfilePicUrl(formatPhoneNumber(recepient_number));
                     let pfp;
                     if (url == undefined || url == null){
-                        await this.mainClientObj.sendMessage(main_number, "No profile picture found");
+                        await mainClientObj.sendMessage(main_number, "No profile picture found");
                         break;
                     }
                     else
                         pfp = await MessageMedia.fromUrl(url);
-                    await this.mainClientObj.sendMedia(main_number, pfp);
+                    await mainClientObj.sendMedia(main_number, pfp);
                     break;
                 case "הסר":
-                    const file = writeFileSync(path.join(path.join(__dirname, '..', 'logs'), "whitelist.txt"), recepient_number + "\n", {flag: 'a'});
-                    await this.mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
+                    const file = writeFileSync(path.join(path.join(__dirname, '../../', 'logs'), "whitelist.txt"), recepient_number + "\n", {flag: 'a'});
+                    await mainClientObj.sendMessage(main_number, `Added ${recepient_number} to whitelist`);
                     break;
                 default:
                     if (message.type == WAWebJS.MessageTypes.IMAGE || message.type == WAWebJS.MessageTypes.VIDEO || message.type == WAWebJS.MessageTypes.AUDIO || message.type == WAWebJS.MessageTypes.DOCUMENT || message.type == WAWebJS.MessageTypes.STICKER) {
@@ -85,19 +85,32 @@ export class ListeningSession extends Session {
         {
             // Message is not a reply
             let sender = await message.author;
-            switch (message.body.toLocaleLowerCase())
+            const splitted = message.body.toLocaleLowerCase().split(" "); 
+            let sessionId = undefined;
+            if (splitted.length > 1 && this.sessionManager.getSessionById(splitted[1]) != undefined)
+                sessionId = splitted[1];
+            switch (splitted[0])
             {
                 case "pause":
-                    this.status = SessionStatus.PAUSED;
+                    if (sessionId != undefined)
+                        this.sessionManager.pauseSession(sessionId);
+                    else
+                        ClientsManager.logManager.error("No session id provided");
                     break;
                 case "resume":
-                    this.status = SessionStatus.RESUMED;
+                    if (sessionId != undefined)
+                        this.sessionManager.resumeSession(sessionId);
+                    else
+                        ClientsManager.logManager.error("No session id provided");
                     break;
                 case "stop":
-                    this.status = SessionStatus.STOPPED;
+                    if (sessionId != undefined)
+                        this.sessionManager.stopSession(sessionId);
+                    else
+                        ClientsManager.logManager.error("No session id provided");
                     break;
                 case "up":
-                    await this.mainClientObj.sendMessage(main_number, "Up");
+                    await mainClientObj.sendMessage(main_number, "Up");
                     break;
                 default:
                     if (message.body.toLocaleLowerCase() in this.autoResponses)
@@ -119,7 +132,7 @@ export class ListeningSession extends Session {
         main_number = formatPhoneNumber(main_number);
         if (sender_number == main_number)
         {
-            this.admin_command(clientId, message, main_number, sender_number);
+            this.admin_command(mainClientObj, clientId, message, main_number, sender_number);
         }
         else
         {
