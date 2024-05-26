@@ -27,6 +27,10 @@ export class MessagesSession extends Session {
         this.phoneNumbers = phoneNumbers;
     }
 
+    public getSentMessage() {
+        return this.sentMessages;
+    }
+
     public async init() {
         this.initClients(this.clientIds);
         this.initMessages();

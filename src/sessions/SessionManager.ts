@@ -28,6 +28,47 @@ export class SessionManager
 
     }
 
+    public async logUser(message: string) {
+        await this.clientManager.clients[this.clientsIds[0]].sendMessage(this.managerNumber, message);
+        ClientsManager.logManager.info(`Sent log message to ${this.managerNumber}: ${message}`);
+    }
+
+    public async sendStatus() {
+        let allSessionTypes = [];
+        const messageSessions = this.getSessionsByType("Messages");
+        const listeningSessions = this.getSessionsByType("Listening");
+        const groupSessions = this.getSessionsByType("Group");
+        const warmingSessions = this.getSessionsByType("Warming");
+        allSessionTypes.push(messageSessions);
+        allSessionTypes.push(listeningSessions);
+        allSessionTypes.push(groupSessions);
+        allSessionTypes.push(warmingSessions);
+
+        
+        const totalMessage = "";
+        let statusMessage = `Status:\n
+        running ${this.sessions.length} sessions\n`;
+        for (let sessionType of allSessionTypes) {
+            if (sessionType.length <= 0) continue;
+            statusMessage += '-----------\n';
+            statusMessage += `${sessionType.length} sessions of type ${sessionType[0].sessionType}\n`
+            for (let session of sessionType) {
+                const startTime = messageSessions[0].getStartTime();
+                const endTime = new Date().getTime();
+                const elapsedTimeMs = endTime - startTime;
+                const elapsedTimeMinutes = elapsedTimeMs / (1000 * 60);
+                statusMessage += `session ${session.getId()}\n
+                running for ${elapsedTimeMinutes} minutes\n
+                with ${session.getClients().length} clients: ${Object.keys(session.getClients()).join(' ')}\n`;
+                if (session.sessionType == "Messages") {
+                    statusMessage += `Sent ${(session as MessagesSession).getSentMessage()} messages\n`
+                }
+            }
+        }
+        await this.clientManager.clients[this.clientsIds[0]].sendMessage(this.managerNumber, statusMessage);
+        ClientsManager.logManager.info(`Sent log message to ${this.managerNumber}`);
+    }
+
     public getSessions() {
         return this.sessions;
     }
@@ -62,6 +103,16 @@ export class SessionManager
 
     public getSessionById(sessionId: string) {
         return this.sessions.find(session => session.getId() === sessionId);
+    }
+
+    protected getSessionsByType(type: string) {
+        let ret = [];
+        for (let session of this.sessions) { 
+            if (session.sessionType == type) {
+                ret.push(session);
+            }
+        }
+        return ret;
     }
 
     public async informUser() {

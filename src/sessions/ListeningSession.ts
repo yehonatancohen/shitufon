@@ -112,6 +112,9 @@ export class ListeningSession extends Session {
                 case "up":
                     await mainClientObj.sendMessage(main_number, "Up");
                     break;
+                case "status":
+                    this.sessionManager.sendStatus();
+                    break;
                 default:
                     if (message.body.toLocaleLowerCase() in this.autoResponses)
                         await client.sendMessage(sender_number, this.autoResponses[message.body.toLocaleLowerCase()])

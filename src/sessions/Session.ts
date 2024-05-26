@@ -16,12 +16,14 @@ export class Session {
     protected clients: { [clientId: string]: ClientController };
     protected clientIds: string[];
     protected status: SessionStatus;
-    protected sessionType: string;
+    public sessionType: string;
+    protected startTime: number;
     protected sessionManager: SessionManager; 
     
 
     constructor(cm: ClientsManager, sm: SessionManager) {
         this.cm = cm;
+        this.startTime = new Date().getTime();
         this.sessionManager = sm;
         this.sessionType = "General";
         this.sessionId = this.generateId();
@@ -29,6 +31,14 @@ export class Session {
         this.clientIds = [];
         this.generateId()
         this.status = SessionStatus.STOPPED;
+    }
+
+    public getStartTime() {
+        return this.startTime;
+    }
+
+    public getClients() {
+        return this.clients;
     }
 
     public getId(){
@@ -56,24 +66,28 @@ export class Session {
     {
         // start session
         this.status = SessionStatus.STARTED;
+        await this.sessionManager.logUser(`Starting session ${this.sessionId} of type ${this.sessionType}`);
         ClientsManager.logManager.info(`Starting session ${this.sessionId} of type ${this.sessionType}`);
     }
 
     public async stop()
     {
         // stop session
+        await this.sessionManager.logUser(`Stopping session ${this.sessionId} of type ${this.sessionType}`)
         this.status = SessionStatus.STOPPED;
     }
 
     public async pause()
     {
         // pause session
+        await this.sessionManager.logUser(`Pausing session ${this.sessionId} of type ${this.sessionType}`);
         this.status = SessionStatus.PAUSED;
     }
 
     public async resume()
     {
         // resume session
+        await this.sessionManager.logUser(`Resuming session ${this.sessionId} of type ${this.sessionType}`);
         this.status = SessionStatus.RESUMED;
     }
 
