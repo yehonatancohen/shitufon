@@ -53,7 +53,7 @@ export class SessionManager
             statusMessage += '-----------\n';
             statusMessage += `${sessionType.length} sessions of type ${sessionType[0].sessionType}\n`
             for (let session of sessionType) {
-                const startTime = messageSessions[0].getStartTime();
+                const startTime = session.getStartTime();
                 const endTime = new Date().getTime();
                 const elapsedTimeMs = endTime - startTime;
                 const elapsedTimeMinutes = elapsedTimeMs / (1000 * 60);
