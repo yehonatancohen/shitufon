@@ -59,7 +59,7 @@ export class SessionManager
                 const elapsedTimeMinutes = elapsedTimeMs / (1000 * 60);
                 statusMessage += `session ${session.getId()}\n
                 running for ${elapsedTimeMinutes} minutes\n
-                with ${session.getClients().length} clients: ${Object.keys(session.getClients()).join(' ')}\n`;
+                with ${Object.keys(session.getClients()).length} clients: ${Object.keys(session.getClients()).join(' ')}\n`;
                 if (session.sessionType == "Messages") {
                     statusMessage += `Sent ${(session as MessagesSession).getSentMessage()} messages\n`
                 }
@@ -74,7 +74,7 @@ export class SessionManager
     }
 
     public getSession(sessionId: string) {
-        return this.sessions.find(session => session.getId() === sessionId);
+        return this.sessions.find(session => session.getId().toLocaleLowerCase() === sessionId.toLocaleLowerCase());
     }
 
     public pauseSession(sessionId: string) {
@@ -102,7 +102,7 @@ export class SessionManager
     }
 
     public getSessionById(sessionId: string) {
-        return this.sessions.find(session => session.getId() === sessionId);
+        return this.sessions.find(session => session.getId().toLocaleLowerCase() === sessionId.toLocaleLowerCase());
     }
 
     protected getSessionsByType(type: string) {
