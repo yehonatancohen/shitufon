@@ -54,12 +54,10 @@ export class MessagesSession extends Session {
             const client = clients[client_index];
             if (client.connected == false)
             {
-                this.clientIds = this.clientIds.filter((value) => value != client.getClientId());
                 ClientsManager.logManager.info(`Client ${client.getClientId()} not connected, skipping`);
-                client_index = (client_index + 1) % clients.length;
-                const c = clients[client_index];
                 this.sessionManager.logUser(`Client ${client.getClientId()} disconnected`);
-                delete phone_numbers[]
+                delete clients[client_index];
+                this.clientIds = this.clientIds.filter((value) => value != client.getClientId());
             }
             while (this.status == SessionStatus.PAUSED) {
                 await sleep(1);
