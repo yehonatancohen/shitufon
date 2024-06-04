@@ -58,20 +58,11 @@ export class MessagesSession extends Session {
                 ClientsManager.logManager.info(`Client ${client.getClientId()} not connected, skipping`);
                 client_index = (client_index + 1) % clients.length;
                 const c = clients[client_index];
-                c.sendMessage('0586181898', `Client ${client.getClientId()} disconnected`);
-                continue;
+                this.sessionManager.logUser(`Client ${client.getClientId()} disconnected`);
+                delete phone_numbers[]
             }
-            switch (this.status) {
-                case SessionStatus.PAUSED:
-                    ClientsManager.logManager.info(`Pausing session ${this.sessionId}`);
-                    await sleep(5);
-                    continue;
-                case SessionStatus.STOPPED:
-                    ClientsManager.logManager.info(`Terminating session ${this.sessionId}`);
-                    break;
-                case SessionStatus.RESUMED:
-                    ClientsManager.logManager.info(`Resuming session ${this.sessionId}`);
-                    break;
+            while (this.status == SessionStatus.PAUSED) {
+                await sleep(1);
             }
             if (this.status == SessionStatus.STOPPED){
                 break;

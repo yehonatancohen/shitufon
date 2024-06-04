@@ -19,7 +19,6 @@ export class Session {
     public sessionType: string;
     protected startTime: number;
     protected sessionManager: SessionManager; 
-    
 
     constructor(cm: ClientsManager, sm: SessionManager) {
         this.cm = cm;
@@ -68,6 +67,11 @@ export class Session {
         this.status = SessionStatus.STARTED;
         await this.sessionManager.logUser(`Starting session ${this.sessionId} of type ${this.sessionType}`);
         ClientsManager.logManager.info(`Starting session ${this.sessionId} of type ${this.sessionType}`);
+    }
+
+    public getClientIds()
+    {
+        return this.clientIds;
     }
 
     public async stop()
