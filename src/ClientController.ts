@@ -87,7 +87,7 @@ export class ClientController {
 		});
 
 		this.clientObj.on('disconnected', (reason) => {
-			if (reason == "NAVIGATION"){
+			if (reason.includes("NAVIGATION")){
 				ClientsManager.logManager.error(`Client ${this.clientId} probably banned`);
 				this.connected = false;
 			}
