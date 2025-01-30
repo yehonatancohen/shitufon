@@ -53,6 +53,10 @@ export class ClientController {
 		return this.clientId;
 	}
 
+	public has_photo() {
+		return this.profilePic.data != "";
+	}
+
 	public get_phone_number(){
 		return this.clientObj.info.wid._serialized;
 	}
@@ -140,6 +144,10 @@ export class ClientController {
 	}
 
 	public async changeProfilePic(pic: MessageMedia | string) {
+		if (this.has_photo()) {
+			ClientsManager.logManager.info(`Not changing profile picture of ${this.clientId}`);
+			return;
+		}
 		ClientsManager.logManager.info(`Changing profile picture of ${this.clientId}`);
 		if (pic == ""){
 			let pfp = new MessageMedia("", "", null, null);

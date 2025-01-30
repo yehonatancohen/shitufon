@@ -1,4 +1,4 @@
-import { Session } from './Session';
+import { Session, SessionStatus } from './Session';
 import { SessionManager } from './SessionManager';
 import { ClientsManager } from '../ClientsManager';
 import WAWebJS, { GroupChat, MessageMedia } from 'whatsapp-web.js';
@@ -10,7 +10,7 @@ import { group } from 'console';
 export class WarmingSession extends Session {
 
     protected mainNumber: string;
-    protected groupId: string;
+    protected groupIds: string[];
     protected sentences: string[];
     protected locker: boolean = false;
 
@@ -19,7 +19,7 @@ export class WarmingSession extends Session {
         this.sessionType = "Warming";
         this.clientIds = clientIds;
         this.mainNumber = mainNumber;
-        this.groupId = "";
+        this.groupIds = [];
         this.sentences = this.loadSentences();
     }
 
@@ -31,12 +31,39 @@ export class WarmingSession extends Session {
     }
 
     public async init() {
-        this.initClients(this.clientIds);
+        await this.initClients(this.clientIds);
     }
 
     public async startSession() {
         super.startSession();
         await this.add_message_listener();
+        await this.main_loop();
+    }
+
+    private async main_loop() {
+        while (true) {
+            if (this.groupIds.length == 0)
+            {
+                await sleep(5);
+                continue;
+            }
+            for (let clientId of this.clientIds) {
+                while (this.status == SessionStatus.PAUSED) {
+                    await sleep(5);
+                }
+                if (this.status == SessionStatus.STOPPED) {
+                    return;
+                }
+                let sleepTime = Math.random() * (60 - 35) + 35; // Random sleep time between 35 and 60 seconds
+                for (let groupId of this.groupIds) {
+                    let client = this.cm.getClient(clientId);
+                    await client.sendGroupMessage(groupId, this.sentences[Math.floor(Math.random() * this.sentences.length)]);
+                    ClientsManager.logManager.info(`Sent message to ${groupId}`);
+                }
+                ClientsManager.logManager.info(`Client ${clientId} sleeping for ${sleepTime} seconds`);
+                await sleep(sleepTime);
+            }
+        }
     }
 
     private async message_callback(clientId: string, message: WAWebJS.Message, sender_number: string, main_number: string = "", main_client: string = "") {
@@ -52,10 +79,10 @@ export class WarmingSession extends Session {
             switch (message.body.toLocaleLowerCase())
             {
                 case "group":
-                    if ((await message.getChat()).isGroup && this.groupId == "")
+                    if ((await message.getChat()).isGroup)
                     {
-                        this.groupId = (await message.getChat()).id._serialized;
-                        this.cm.getClient(clientId).sendGroupMessage(this.groupId, "Group set");
+                        if (!this.groupIds.includes((await message.getChat()).id._serialized))
+                            this.groupIds.push((await message.getChat()).id._serialized);
                     }
                     break;
                 case "up":
@@ -63,27 +90,6 @@ export class WarmingSession extends Session {
                     break;
             }
         }
-        else
-        {
-            if ((message.from == this.groupId && clientId == this.clientIds[0]) || (this.locker && clientId == this.clientIds[1]))
-            {
-                if (this.locker)
-                {
-                    this.locker = false;
-                }
-                let currentTurn = Math.floor(Math.random() * this.clientIds.length);
-                if (currentTurn == 0)
-                {
-                    this.locker = true;
-                }
-                let sleep_time = Math.random() * (180 - 35) + 35;
-                ClientsManager.logManager.info(`Client ${this.clientIds[currentTurn]} sleeping for ${sleep_time} seconds`);
-                await sleep(sleep_time);
-                this.cm.getClient(clientId).sendGroupMessage(this.groupId, this.sentences[Math.floor(Math.random() * this.sentences.length)]);
-                ClientsManager.logManager.info(`Sent message to ${this.groupId}`);
-            }
-        }
-
     }
 
     private async all_clients_in_group(group_id: string)
